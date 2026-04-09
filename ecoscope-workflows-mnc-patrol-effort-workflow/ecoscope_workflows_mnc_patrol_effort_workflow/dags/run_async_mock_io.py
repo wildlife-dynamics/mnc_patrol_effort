@@ -28,7 +28,7 @@ from ecoscope_workflows_ext_mnc.tasks import (
     create_gdf_from_dict as create_gdf_from_dict,
 )
 from ecoscope_workflows_ext_ste.tasks import (
-    annotate_gdf_dict_with_geom_type as annotate_gdf_dict_with_geom_type,
+    annotate_gdf_dict_with_geom_type as annotate_gdf_dict_with_geom_type_1,
 )
 from ecoscope_workflows_ext_ste.tasks import (
     create_custom_text_layer as create_custom_text_layer,
@@ -42,7 +42,7 @@ from ecoscope_workflows_ext_ste.tasks import (
 from ecoscope_workflows_ext_ste.tasks import (
     fetch_and_persist_file as fetch_and_persist_file,
 )
-from ecoscope_workflows_ext_ste.tasks import get_gdf_geom_type as get_gdf_geom_type
+from ecoscope_workflows_ext_ste.tasks import get_gdf_geom_type as get_gdf_geom_type_1
 from ecoscope_workflows_ext_ste.tasks import split_gdf_by_column as split_gdf_by_column
 
 get_events = create_task_magicmock(  # 🧪
@@ -394,7 +394,7 @@ def main(params: Params):
             method="call",
         ),
         "annotate_comm_gdf_dict": Node(
-            async_task=annotate_gdf_dict_with_geom_type.validate()
+            async_task=annotate_gdf_dict_with_geom_type_1.validate()
             .set_task_instance_id("annotate_comm_gdf_dict")
             .handle_errors()
             .with_tracing()
@@ -673,7 +673,7 @@ def main(params: Params):
             method="call",
         ),
         "assign_mnc_geom": Node(
-            async_task=get_gdf_geom_type.validate()
+            async_task=get_gdf_geom_type_1.validate()
             .set_task_instance_id("assign_mnc_geom")
             .handle_errors()
             .with_tracing()
@@ -1983,6 +1983,7 @@ def main(params: Params):
                     "sort": "ascending",
                 },
                 "geodataframe": DependsOn("filter_foot_patrol_cols"),
+                "data_url": None,
             }
             | (params_dict.get("generate_foot_layers") or {}),
             method="call",
@@ -2256,6 +2257,7 @@ def main(params: Params):
                     "sort": "ascending",
                 },
                 "geodataframe": DependsOn("filter_vehicle_patrol_cols"),
+                "data_url": None,
             }
             | (params_dict.get("generate_vehicle_layers") or {}),
             method="call",
@@ -2508,6 +2510,7 @@ def main(params: Params):
                     "sort": "ascending",
                 },
                 "geodataframe": DependsOn("filter_motor_patrol_cols"),
+                "data_url": None,
             }
             | (params_dict.get("generate_motor_layers") or {}),
             method="call",
@@ -2888,6 +2891,7 @@ def main(params: Params):
                     "color_column": "density_colors",
                 },
                 "geodataframe": DependsOn("apply_grid_colormap"),
+                "data_url": None,
             }
             | (params_dict.get("generate_grid_layers") or {}),
             method="call",
@@ -3151,7 +3155,7 @@ def main(params: Params):
                 "config": {
                     "full_page": False,
                     "device_scale_factor": 2.0,
-                    "wait_for_timeout": 75000,
+                    "wait_for_timeout": 40000,
                     "max_concurrent_pages": 1,
                 },
             }
