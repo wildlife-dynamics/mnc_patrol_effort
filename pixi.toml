@@ -20,7 +20,7 @@ hatch-vcs = "*"
 ecoscope-workflows-ext-mnc = "0.0.8.*"
 ecoscope-workflows-ext-ste = "0.0.13.*"
 ecoscope-workflows-core = "0.22.18.*"
-ecoscope-workflows-ext-custom = "0.0.39.*"
+ecoscope-workflows-ext-custom = "0.0.43.*"
 
 [environments]
 compile = { features = ["compile"], no-default-feature = true }
