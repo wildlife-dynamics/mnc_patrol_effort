@@ -18,7 +18,7 @@ hatch-vcs = "*"
 
 [feature.compile.dependencies]
 ecoscope-workflows-ext-mnc = "0.0.8.*"
-ecoscope-workflows-ext-ste = "0.0.13.*"
+ecoscope-workflows-ext-ste = "0.0.19.*"
 ecoscope-workflows-ext-mep = "0.0.12.*"
 ecoscope-workflows-core = "0.22.18.*"
 ecoscope-workflows-ext-custom = "0.0.45.*"
