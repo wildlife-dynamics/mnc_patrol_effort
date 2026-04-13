@@ -1261,8 +1261,8 @@ workflow:
         stroked: true 
         extruded: false 
         wireframe: false
-        get_fill_color: vehicle_patrol_colors
-        get_line_color: vehicle_patrol_colors
+        get_fill_color: "properties.vehicle_patrol_colors"
+        get_line_color: "properties.vehicle_patrol_colors"
         opacity: 0.55 
         get_line_width: 1.55
         get_elevation: 0
@@ -1447,8 +1447,8 @@ workflow:
         stroked: true 
         extruded: false 
         wireframe: false
-        get_fill_color: motor_patrol_colors
-        get_line_color: motor_patrol_colors
+        get_fill_color: "properties.motor_patrol_colors"
+        get_line_color: "properties.motor_patrol_colors"
         opacity: 0.55 
         get_line_width: 1.55
         get_elevation: 0
