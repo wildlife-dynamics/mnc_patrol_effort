@@ -74,6 +74,7 @@ from ecoscope_workflows_ext_mnc.tasks import (
 from ecoscope_workflows_ext_mnc.tasks import (
     explode_multiple_columns as explode_multiple_columns,
 )
+from ecoscope_workflows_ext_mnc.tasks import filter_columns as filter_columns
 from ecoscope_workflows_ext_mnc.tasks import (
     filter_non_empty_values as filter_non_empty_values,
 )
@@ -1631,6 +1632,27 @@ def main(params: Params):
         .call()
     )
 
+    filter_foot_trajs = (
+        filter_columns.validate()
+        .set_task_instance_id("filter_foot_trajs")
+        .handle_errors()
+        .with_tracing()
+        .skipif(
+            conditions=[
+                any_is_empty_df,
+                any_dependency_skipped,
+            ],
+            unpack_depth=1,
+        )
+        .partial(
+            df=apply_footp_colormap,
+            columns=["geometry", "foot_patrol_colors", "patrol_type_value"],
+            exclude=None,
+            **(params_dict.get("filter_foot_trajs") or {}),
+        )
+        .call()
+    )
+
     persist_foot_geojson = (
         gdf_to_geojson.validate()
         .set_task_instance_id("persist_foot_geojson")
@@ -1645,7 +1667,7 @@ def main(params: Params):
         )
         .partial(
             root_path=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
-            df=apply_footp_colormap,
+            df=filter_foot_trajs,
             filename="foot_patrol_trajectories",
             **(params_dict.get("persist_foot_geojson") or {}),
         )
@@ -1944,6 +1966,27 @@ def main(params: Params):
         .call()
     )
 
+    filter_vehicles_trajs = (
+        filter_columns.validate()
+        .set_task_instance_id("filter_vehicles_trajs")
+        .handle_errors()
+        .with_tracing()
+        .skipif(
+            conditions=[
+                any_is_empty_df,
+                any_dependency_skipped,
+            ],
+            unpack_depth=1,
+        )
+        .partial(
+            df=apply_vehicle_colormap,
+            columns=["geometry", "foot_patrol_colors", "patrol_type_value"],
+            exclude=None,
+            **(params_dict.get("filter_vehicles_trajs") or {}),
+        )
+        .call()
+    )
+
     persist_vehicle_geojson = (
         gdf_to_geojson.validate()
         .set_task_instance_id("persist_vehicle_geojson")
@@ -1958,7 +2001,7 @@ def main(params: Params):
         )
         .partial(
             root_path=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
-            df=apply_vehicle_colormap,
+            df=filter_vehicles_trajs,
             filename="vehicle_patrol_trajectories",
             **(params_dict.get("persist_vehicle_geojson") or {}),
         )
@@ -2236,6 +2279,27 @@ def main(params: Params):
         .call()
     )
 
+    filter_motor_trajs = (
+        filter_columns.validate()
+        .set_task_instance_id("filter_motor_trajs")
+        .handle_errors()
+        .with_tracing()
+        .skipif(
+            conditions=[
+                any_is_empty_df,
+                any_dependency_skipped,
+            ],
+            unpack_depth=1,
+        )
+        .partial(
+            df=apply_motor_colormap,
+            columns=["geometry", "foot_patrol_colors", "patrol_type_value"],
+            exclude=None,
+            **(params_dict.get("filter_motor_trajs") or {}),
+        )
+        .call()
+    )
+
     persist_motor_geojson = (
         gdf_to_geojson.validate()
         .set_task_instance_id("persist_motor_geojson")
@@ -2250,7 +2314,7 @@ def main(params: Params):
         )
         .partial(
             root_path=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
-            df=apply_motor_colormap,
+            df=filter_motor_trajs,
             filename="motor_patrol_trajectories",
             **(params_dict.get("persist_motor_geojson") or {}),
         )

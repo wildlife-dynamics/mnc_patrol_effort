@@ -1038,6 +1038,22 @@ workflow:
       colormap: tab20
       df: ${{ workflow.rename_foot_trajs.return }}
 
+  - name: Filter patrol columns for foot trajs 
+    id: filter_foot_trajs 
+    task: filter_columns 
+    skipif:
+      conditions:
+        - any_is_empty_df
+        - any_dependency_skipped
+    partial: 
+      df: ${{ workflow.apply_footp_colormap.return }}
+      columns: [
+        "geometry",
+        "foot_patrol_colors",
+        "patrol_type_value"
+      ]
+      exclude: null
+
   - name: Persist foot patrols as geojson
     id: persist_foot_geojson
     task: gdf_to_geojson
@@ -1047,7 +1063,7 @@ workflow:
         - any_dependency_skipped
     partial:
       root_path: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
-      df: ${{ workflow.apply_footp_colormap.return }}
+      df: ${{ workflow.filter_foot_trajs.return }}
       filename: foot_patrol_trajectories
 
   - name: Generate foot patrol layers
@@ -1236,6 +1252,22 @@ workflow:
       colormap: tab20
       df: ${{ workflow.rename_vehicle_trajs.return }}
 
+  - name: Filter patrol columns for vehicles trajs 
+    id: filter_vehicles_trajs 
+    task: filter_columns 
+    skipif:
+      conditions:
+        - any_is_empty_df
+        - any_dependency_skipped
+    partial: 
+      df: ${{ workflow.apply_vehicle_colormap.return }}
+      columns: [
+        "geometry",
+        "foot_patrol_colors",
+        "patrol_type_value"
+      ]
+      exclude: null
+
   - name: Persist vehicle patrols as geojson
     id: persist_vehicle_geojson
     task: gdf_to_geojson
@@ -1245,7 +1277,7 @@ workflow:
         - any_dependency_skipped
     partial:
       root_path: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
-      df: ${{ workflow.apply_vehicle_colormap.return }}
+      df: ${{ workflow.filter_vehicles_trajs.return }}
       filename: vehicle_patrol_trajectories
 
   - name: Generate vehicle patrol layers
@@ -1422,6 +1454,22 @@ workflow:
       colormap: tab20
       df: ${{ workflow.rename_motor_trajs.return }}
 
+  - name: Filter patrol columns for motor trajs 
+    id: filter_motor_trajs 
+    task: filter_columns 
+    skipif:
+      conditions:
+        - any_is_empty_df
+        - any_dependency_skipped
+    partial: 
+      df: ${{ workflow.apply_motor_colormap.return }}
+      columns: [
+        "geometry",
+        "foot_patrol_colors",
+        "patrol_type_value"
+      ]
+      exclude: null
+
   - name: Persist motor patrols as geojson
     id: persist_motor_geojson
     task: gdf_to_geojson
@@ -1431,7 +1479,7 @@ workflow:
         - any_dependency_skipped
     partial:
       root_path: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
-      df: ${{ workflow.apply_motor_colormap.return }}
+      df: ${{ workflow.filter_motor_trajs.return }}
       filename: motor_patrol_trajectories
 
   - name: Generate motor patrol layers
