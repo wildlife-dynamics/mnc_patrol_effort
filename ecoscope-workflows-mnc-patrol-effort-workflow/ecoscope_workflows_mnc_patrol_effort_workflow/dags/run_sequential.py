@@ -553,6 +553,7 @@ def main(params: Params):
                 "distancecountwildlife_rep",
                 "distancecountpatrol_rep",
                 "airstrip_operations",
+                "silence_source_rep",
             ],
             **(params_dict.get("filter_events") or {}),
         )
@@ -861,7 +862,14 @@ def main(params: Params):
                     "display_name": "no_of_patrols",
                     "aggregator": "nunique",
                     "column": "id",
-                }
+                },
+                {
+                    "display_name": "distance_km",
+                    "aggregator": "sum",
+                    "column": "dist_meters",
+                    "original_unit": "m",
+                    "new_unit": "km",
+                },
             ],
             reset_index=True,
             df=rename_patrol_info,
@@ -1980,7 +1988,7 @@ def main(params: Params):
         )
         .partial(
             df=apply_vehicle_colormap,
-            columns=["geometry", "foot_patrol_colors", "patrol_type_value"],
+            columns=["geometry", "vehicle_patrol_colors", "patrol_type_value"],
             exclude=None,
             **(params_dict.get("filter_vehicles_trajs") or {}),
         )
@@ -2293,7 +2301,7 @@ def main(params: Params):
         )
         .partial(
             df=apply_motor_colormap,
-            columns=["geometry", "foot_patrol_colors", "patrol_type_value"],
+            columns=["geometry", "vehicle_patrol_colors", "patrol_type_value"],
             exclude=None,
             **(params_dict.get("filter_motor_trajs") or {}),
         )

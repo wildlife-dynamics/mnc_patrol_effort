@@ -339,6 +339,7 @@ workflow:
         - distancecountwildlife_rep
         - distancecountpatrol_rep
         - airstrip_operations
+        - silence_source_rep
 
   - name: Calculate total events
     id: total_events_recorded
@@ -536,6 +537,11 @@ workflow:
         - display_name: no_of_patrols
           aggregator: nunique 
           column: id 
+        - display_name: distance_km
+          aggregator: sum
+          column: dist_meters
+          original_unit: m
+          new_unit: km
       reset_index: true
       df: ${{ workflow.rename_patrol_info.return }}
 
@@ -1263,7 +1269,7 @@ workflow:
       df: ${{ workflow.apply_vehicle_colormap.return }}
       columns: [
         "geometry",
-        "foot_patrol_colors",
+        "vehicle_patrol_colors",
         "patrol_type_value"
       ]
       exclude: null
@@ -1465,7 +1471,7 @@ workflow:
       df: ${{ workflow.apply_motor_colormap.return }}
       columns: [
         "geometry",
-        "foot_patrol_colors",
+        "vehicle_patrol_colors",
         "patrol_type_value"
       ]
       exclude: null

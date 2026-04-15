@@ -822,6 +822,7 @@ filter_events = (
             "distancecountwildlife_rep",
             "distancecountpatrol_rep",
             "airstrip_operations",
+            "silence_source_rep",
         ],
         **filter_events_params,
     )
@@ -1266,7 +1267,14 @@ patrol_info_summary = (
     .partial(
         groupby_cols=["purpose"],
         summary_params=[
-            {"display_name": "no_of_patrols", "aggregator": "nunique", "column": "id"}
+            {"display_name": "no_of_patrols", "aggregator": "nunique", "column": "id"},
+            {
+                "display_name": "distance_km",
+                "aggregator": "sum",
+                "column": "dist_meters",
+                "original_unit": "m",
+                "new_unit": "km",
+            },
         ],
         reset_index=True,
         df=rename_patrol_info,
@@ -2902,7 +2910,7 @@ filter_vehicles_trajs = (
     )
     .partial(
         df=apply_vehicle_colormap,
-        columns=["geometry", "foot_patrol_colors", "patrol_type_value"],
+        columns=["geometry", "vehicle_patrol_colors", "patrol_type_value"],
         exclude=None,
         **filter_vehicles_trajs_params,
     )
@@ -3365,7 +3373,7 @@ filter_motor_trajs = (
     )
     .partial(
         df=apply_motor_colormap,
-        columns=["geometry", "foot_patrol_colors", "patrol_type_value"],
+        columns=["geometry", "vehicle_patrol_colors", "patrol_type_value"],
         exclude=None,
         **filter_motor_trajs_params,
     )
