@@ -1158,13 +1158,6 @@ def main(params: Params):
                         "aggregator": "nunique",
                         "column": "id",
                     },
-                    {
-                        "display_name": "distance_km",
-                        "aggregator": "sum",
-                        "column": "dist_meters",
-                        "original_unit": "m",
-                        "new_unit": "km",
-                    },
                 ],
                 "reset_index": True,
                 "df": DependsOn("rename_patrol_info"),

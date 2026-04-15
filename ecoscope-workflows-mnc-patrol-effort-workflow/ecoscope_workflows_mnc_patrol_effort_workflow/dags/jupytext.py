@@ -1267,14 +1267,7 @@ patrol_info_summary = (
     .partial(
         groupby_cols=["purpose"],
         summary_params=[
-            {"display_name": "no_of_patrols", "aggregator": "nunique", "column": "id"},
-            {
-                "display_name": "distance_km",
-                "aggregator": "sum",
-                "column": "dist_meters",
-                "original_unit": "m",
-                "new_unit": "km",
-            },
+            {"display_name": "no_of_patrols", "aggregator": "nunique", "column": "id"}
         ],
         reset_index=True,
         df=rename_patrol_info,
