@@ -969,7 +969,6 @@ workflow:
       df: ${{ workflow.temporal_motor_traj.return }}
 
   # ---- FOOT PATROLS ----
-
   - name: Summarize foot patrol metrics
     id: foot_patrol_metrics
     task: summarize_df
@@ -1026,64 +1025,65 @@ workflow:
       filename: foot_patrol_efforts
       df: ${{ workflow.add_fp_metrics_totals.return }}
 
-  - name: Apply Colormap to foot patrols
-    id: apply_footp_colormap
+  - name: Create foot patrol coverage grid
+    id: foot_patrol_grid_visits 
+    task: create_patrol_coverage_grid 
+    skipif:
+      conditions:
+        - any_is_empty_df
+        - any_dependency_skipped
+    partial:
+      grid_cell_size: 1000
+      trajs: ${{ workflow.rename_foot_trajs.return }}
+
+  - name: Apply bin classification on foot patrol grids
+    id: apply_foot_class_grid
+    task: apply_classification
+    skipif:
+      conditions:
+        - any_is_empty_df
+        - any_dependency_skipped
+    partial:
+      input_column_name: unique_patrol_count
+      output_column_name: density_bins 
+      label_options:
+        label_ranges: false
+        label_decimals: 1
+      classification_options:
+        k: 5
+        scheme: "equal_interval"
+      df: ${{ workflow.foot_patrol_grid_visits.return }}
+
+  - name: Apply Colormap to foot patrol grid visits
+    id: apply_foot_grid_colormap
     task: apply_color_map
     skipif:
       conditions:
         - any_is_empty_df
         - any_dependency_skipped
     partial:
-      input_column_name: patrol_type_value
-      output_column_name: foot_patrol_colors
-      colormap: tab20
-      df: ${{ workflow.rename_foot_trajs.return }}
+      input_column_name: density_bins
+      colormap: RdYlGn_r
+      output_column_name: density_colors
+      df: ${{ workflow.apply_foot_class_grid.return }}
 
-  - name: Filter patrol columns for foot trajs 
-    id: filter_foot_trajs 
-    task: filter_columns 
-    skipif:
-      conditions:
-        - any_is_empty_df
-        - any_dependency_skipped
-    partial: 
-      df: ${{ workflow.apply_footp_colormap.return }}
-      columns: [
-        "geometry",
-        "foot_patrol_colors",
-        "patrol_type_value"
-      ]
-      exclude: null
-
-  - name: Persist foot patrols as geojson
-    id: persist_foot_geojson
-    task: gdf_to_geojson
-    skipif:
-      conditions:
-        - any_is_empty_df
-        - any_dependency_skipped
-    partial:
-      root_path: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
-      df: ${{ workflow.filter_foot_trajs.return }}
-      filename: foot_patrol_trajectories
-
-  - name: Generate foot patrol layers
-    id: generate_foot_layers
+  - name: Create  foot patrol visit grid layers
+    id: generate_foot_grid_layers
     task: create_geojson_layer
     skipif:
       conditions:
         - any_is_empty_df
         - any_dependency_skipped
     partial:
-      layer_style:
+      layer_style: 
         filled: true 
         stroked: true 
         extruded: false 
         wireframe: false
-        get_fill_color: "properties.foot_patrol_colors"
-        get_line_color: "properties.foot_patrol_colors"
-        opacity: 0.55 
-        get_line_width: 1.55
+        get_fill_color: density_colors
+        get_line_color: [0, 0, 0]
+        opacity: 0.75 
+        get_line_width: 0.85
         get_elevation: 0
         get_point_radius: 1
         line_width_units: pixels 
@@ -1091,15 +1091,14 @@ workflow:
         line_width_min_pixels: 1
         line_width_max_pixels: 5
       legend:
-        title: Patrol Type
-        label_column: patrol_type_value
-        color_column: foot_patrol_colors
-        sort: ascending
-      geodataframe: ${{ workflow.apply_footp_colormap.return }}
-      data_url: ${{ workflow.persist_foot_geojson.return }}
+        title: Visits
+        label_column: density_bins
+        color_column: density_colors
+      geodataframe: ${{ workflow.apply_foot_grid_colormap.return }}
+      data_url: null
 
-  - name: Combine styled layers with foot layers
-    id: combine_foot_layers
+  - name: Combine styled layers with foot patrol coverage
+    id: combine_foot_grid_layers
     task: combine_deckgl_map_layers
     skipif:
       conditions:
@@ -1110,7 +1109,8 @@ workflow:
         - ${{ workflow.create_conservancy_boundaries.return }}
         - ${{ workflow.create_mnc_parcels_layers.return }}
         - ${{ workflow.conservancy_text_layer.return }}
-      grouped_layers: ${{ workflow.generate_foot_layers.return }}
+
+      grouped_layers: ${{ workflow.generate_foot_grid_layers.return }}
 
   - name: Global map zoom value
     id: global_zoom_value
@@ -1138,20 +1138,8 @@ workflow:
       max_zoom: 10
       legend_style:
         placement: "bottom-right"
-      geo_layers: ${{ workflow.combine_foot_layers.return }}
+      geo_layers: ${{ workflow.combine_foot_grid_layers.return }}
       view_state: ${{ workflow.global_zoom_value.return }}
-
-  - name: Rewrite foot patrols file urls
-    id: rewrite_foot_patrol_urls
-    task: rewrite_file_urls_for_screenshots
-    skipif:
-      conditions:
-        - any_is_empty_df
-        - any_dependency_skipped
-    partial:
-      html: ${{ workflow.draw_foot_map.return }}
-      file_urls:
-        - ${{ workflow.persist_foot_geojson.return }}
 
   - name: Persist foot patrols map HTML
     id: persist_foot_urls
@@ -1162,7 +1150,7 @@ workflow:
         - any_dependency_skipped
     partial:
       root_path: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
-      text: ${{ workflow.rewrite_foot_patrol_urls.return }}
+      text: ${{ workflow.draw_foot_map.return }}
       filename: foot_patrols_map.html
 
   - name: Convert foot patrol map to png
@@ -1180,10 +1168,8 @@ workflow:
         device_scale_factor: 2.0
         wait_for_timeout: 40000
         max_concurrent_pages: 1
-        serve_local_files: true
 
   # ---- VEHICLE PATROLS ----
-
   - name: Summarize vehicle patrol metrics
     id: vehicle_patrol_metrics
     task: summarize_df
@@ -1240,64 +1226,65 @@ workflow:
       df: ${{ workflow.add_vh_metrics_totals.return }}
       filename: vehicle_patrol_efforts
 
-  - name: Apply Colormap to vehicle patrols
-    id: apply_vehicle_colormap
+  - name: Create vehicle patrol coverage grid
+    id: vehicle_patrol_grid_visits 
+    task: create_patrol_coverage_grid 
+    skipif:
+      conditions:
+        - any_is_empty_df
+        - any_dependency_skipped
+    partial:
+      grid_cell_size: 1000
+      trajs: ${{ workflow.rename_vehicle_trajs.return }}
+
+  - name: Apply bin classification on vehicle patrol grids
+    id: apply_vehicle_class_grid
+    task: apply_classification
+    skipif:
+      conditions:
+        - any_is_empty_df
+        - any_dependency_skipped
+    partial:
+      input_column_name: unique_patrol_count
+      output_column_name: density_bins 
+      label_options:
+        label_ranges: false
+        label_decimals: 1
+      classification_options:
+        k: 5
+        scheme: "equal_interval"
+      df: ${{ workflow.vehicle_patrol_grid_visits.return }}
+
+  - name: Apply Colormap to vehicle patrol grid visits
+    id: apply_vehicle_grid_colormap
     task: apply_color_map
     skipif:
       conditions:
         - any_is_empty_df
         - any_dependency_skipped
     partial:
-      input_column_name: patrol_type_value
-      output_column_name: vehicle_patrol_colors
-      colormap: tab20
-      df: ${{ workflow.rename_vehicle_trajs.return }}
+      input_column_name: density_bins
+      colormap: RdYlGn_r
+      output_column_name: density_colors
+      df: ${{ workflow.apply_vehicle_class_grid.return }}
 
-  - name: Filter patrol columns for vehicles trajs 
-    id: filter_vehicles_trajs 
-    task: filter_columns 
-    skipif:
-      conditions:
-        - any_is_empty_df
-        - any_dependency_skipped
-    partial: 
-      df: ${{ workflow.apply_vehicle_colormap.return }}
-      columns: [
-        "geometry",
-        "vehicle_patrol_colors",
-        "patrol_type_value"
-      ]
-      exclude: null
-
-  - name: Persist vehicle patrols as geojson
-    id: persist_vehicle_geojson
-    task: gdf_to_geojson
-    skipif:
-      conditions:
-        - any_is_empty_df
-        - any_dependency_skipped
-    partial:
-      root_path: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
-      df: ${{ workflow.filter_vehicles_trajs.return }}
-      filename: vehicle_patrol_trajectories
-
-  - name: Generate vehicle patrol layers
-    id: generate_vehicle_layers
+  - name: Create vehicle patrol visit grid layers
+    id: generate_vehicle_grid_layers
     task: create_geojson_layer
     skipif:
       conditions:
         - any_is_empty_df
         - any_dependency_skipped
     partial:
-      layer_style:
+      layer_style: 
         filled: true 
         stroked: true 
         extruded: false 
         wireframe: false
-        get_fill_color: "properties.vehicle_patrol_colors"
-        get_line_color: "properties.vehicle_patrol_colors"
-        opacity: 0.55 
-        get_line_width: 1.55
+        get_fill_color: density_colors
+        get_line_color: [0, 0, 0]
+        opacity: 0.75 
+        get_line_width: 0.85
         get_elevation: 0
         get_point_radius: 1
         line_width_units: pixels 
@@ -1305,15 +1292,14 @@ workflow:
         line_width_min_pixels: 1
         line_width_max_pixels: 5
       legend:
-        title: Patrol Type
-        label_column: patrol_type_value
-        color_column: vehicle_patrol_colors
-        sort: ascending
-      geodataframe: ${{ workflow.apply_vehicle_colormap.return }}
-      data_url: ${{ workflow.persist_vehicle_geojson.return }}
+        title: Visits
+        label_column: density_bins
+        color_column: density_colors
+      geodataframe: ${{ workflow.apply_vehicle_grid_colormap.return }}
+      data_url: null
 
-  - name: Combine styled layers with vehicle layers
-    id: combine_vehicle_layers
+  - name: Combine styled layers with vehicle patrol coverage
+    id: combine_vehicle_grid_layers
     task: combine_deckgl_map_layers
     skipif:
       conditions:
@@ -1324,7 +1310,8 @@ workflow:
         - ${{ workflow.create_conservancy_boundaries.return }}
         - ${{ workflow.create_mnc_parcels_layers.return }}
         - ${{ workflow.conservancy_text_layer.return }}
-      grouped_layers: ${{ workflow.generate_vehicle_layers.return }}
+
+      grouped_layers: ${{ workflow.generate_vehicle_grid_layers.return }}
 
   - name: Draw vehicle patrols map
     id: draw_vehicle_map
@@ -1340,20 +1327,8 @@ workflow:
       max_zoom: 10
       legend_style:
         placement: "bottom-right"
-      geo_layers: ${{ workflow.combine_vehicle_layers.return }}
+      geo_layers: ${{ workflow.combine_vehicle_grid_layers.return }}
       view_state: ${{ workflow.global_zoom_value.return }}
-
-  - name: Rewrite vehicle patrols file urls
-    id: rewrite_vehicle_patrol_urls
-    task: rewrite_file_urls_for_screenshots
-    skipif:
-      conditions:
-        - any_is_empty_df
-        - any_dependency_skipped
-    partial:
-      html: ${{ workflow.draw_vehicle_map.return }}
-      file_urls:
-        - ${{ workflow.persist_vehicle_geojson.return }}
 
   - name: Persist vehicle patrols map HTML
     id: persist_vehicle_urls
@@ -1364,7 +1339,7 @@ workflow:
         - any_dependency_skipped
     partial:
       root_path: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
-      text: ${{ workflow.rewrite_vehicle_patrol_urls.return }}
+      text: ${{ workflow.draw_vehicle_map.return }}
       filename: vehicle_patrols_map.html
 
   - name: Convert vehicle patrol map to png
@@ -1382,10 +1357,8 @@ workflow:
         device_scale_factor: 2.0
         wait_for_timeout: 40000
         max_concurrent_pages: 1
-        serve_local_files: true
 
   # ---- MOTORBIKE PATROLS ----
-
   - name: Summarize motorbike patrol metrics
     id: motor_patrol_metrics
     task: summarize_df
@@ -1442,64 +1415,65 @@ workflow:
       df: ${{ workflow.add_mb_metrics_totals.return }}
       filename: motorbike_patrol_efforts
 
-  - name: Apply Colormap to motor patrols
-    id: apply_motor_colormap
+  - name: Create motor patrol coverage grid
+    id: motor_patrol_grid_visits 
+    task: create_patrol_coverage_grid 
+    skipif:
+      conditions:
+        - any_is_empty_df
+        - any_dependency_skipped
+    partial:
+      grid_cell_size: 1000
+      trajs: ${{ workflow.rename_motor_trajs.return }}
+
+  - name: Apply bin classification on motor patrol grids
+    id: apply_motor_class_grid
+    task: apply_classification
+    skipif:
+      conditions:
+        - any_is_empty_df
+        - any_dependency_skipped
+    partial:
+      input_column_name: unique_patrol_count
+      output_column_name: density_bins 
+      label_options:
+        label_ranges: false
+        label_decimals: 1
+      classification_options:
+        k: 5
+        scheme: "equal_interval"
+      df: ${{ workflow.motor_patrol_grid_visits.return }}
+
+  - name: Apply Colormap to motor patrol grid visits
+    id: apply_motor_grid_colormap
     task: apply_color_map
     skipif:
       conditions:
         - any_is_empty_df
         - any_dependency_skipped
     partial:
-      input_column_name: patrol_type_value
-      output_column_name: motor_patrol_colors
-      colormap: tab20
-      df: ${{ workflow.rename_motor_trajs.return }}
+      input_column_name: density_bins
+      colormap: RdYlGn_r
+      output_column_name: density_colors
+      df: ${{ workflow.apply_motor_class_grid.return }}
 
-  - name: Filter patrol columns for motor trajs 
-    id: filter_motor_trajs 
-    task: filter_columns 
-    skipif:
-      conditions:
-        - any_is_empty_df
-        - any_dependency_skipped
-    partial: 
-      df: ${{ workflow.apply_motor_colormap.return }}
-      columns: [
-        "geometry",
-        "vehicle_patrol_colors",
-        "patrol_type_value"
-      ]
-      exclude: null
-
-  - name: Persist motor patrols as geojson
-    id: persist_motor_geojson
-    task: gdf_to_geojson
-    skipif:
-      conditions:
-        - any_is_empty_df
-        - any_dependency_skipped
-    partial:
-      root_path: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
-      df: ${{ workflow.filter_motor_trajs.return }}
-      filename: motor_patrol_trajectories
-
-  - name: Generate motor patrol layers
-    id: generate_motor_layers
+  - name: Create motor patrol visit grid layers
+    id: generate_motor_grid_layers
     task: create_geojson_layer
     skipif:
       conditions:
         - any_is_empty_df
         - any_dependency_skipped
     partial:
-      layer_style:
+      layer_style: 
         filled: true 
         stroked: true 
         extruded: false 
         wireframe: false
-        get_fill_color: "properties.motor_patrol_colors"
-        get_line_color: "properties.motor_patrol_colors"
-        opacity: 0.55 
-        get_line_width: 1.55
+        get_fill_color: density_colors
+        get_line_color: [0, 0, 0]
+        opacity: 0.75 
+        get_line_width: 0.85
         get_elevation: 0
         get_point_radius: 1
         line_width_units: pixels 
@@ -1507,15 +1481,14 @@ workflow:
         line_width_min_pixels: 1
         line_width_max_pixels: 5
       legend:
-        title: Patrol Type
-        label_column: patrol_type_value
-        color_column: motor_patrol_colors
-        sort: ascending
-      geodataframe: ${{ workflow.apply_motor_colormap.return }}
-      data_url: ${{ workflow.persist_motor_geojson.return }}
+        title: Visits
+        label_column: density_bins
+        color_column: density_colors
+      geodataframe: ${{ workflow.apply_motor_grid_colormap.return }}
+      data_url: null
 
-  - name: Combine styled layers with motorbike layers
-    id: combine_motor_layers
+  - name: Combine styled layers with motor patrol coverage
+    id: combine_motor_grid_layers
     task: combine_deckgl_map_layers
     skipif:
       conditions:
@@ -1526,7 +1499,8 @@ workflow:
         - ${{ workflow.create_conservancy_boundaries.return }}
         - ${{ workflow.create_mnc_parcels_layers.return }}
         - ${{ workflow.conservancy_text_layer.return }}
-      grouped_layers: ${{ workflow.generate_motor_layers.return }}
+
+      grouped_layers: ${{ workflow.generate_motor_grid_layers.return }}
 
   - name: Draw motor patrols map
     id: draw_motor_map
@@ -1542,20 +1516,8 @@ workflow:
       max_zoom: 10
       legend_style:
         placement: "bottom-right"
-      geo_layers: ${{ workflow.combine_motor_layers.return }}
+      geo_layers: ${{ workflow.combine_motor_grid_layers.return }}
       view_state: ${{ workflow.global_zoom_value.return }}
-
-  - name: Rewrite motor patrols file urls
-    id: rewrite_motor_patrol_urls
-    task: rewrite_file_urls_for_screenshots
-    skipif:
-      conditions:
-        - any_is_empty_df
-        - any_dependency_skipped
-    partial:
-      html: ${{ workflow.draw_motor_map.return }}
-      file_urls:
-        - ${{ workflow.persist_motor_geojson.return }}
 
   - name: Persist motor patrols map HTML
     id: persist_motor_urls
@@ -1566,7 +1528,7 @@ workflow:
         - any_dependency_skipped
     partial:
       root_path: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
-      text: ${{ workflow.rewrite_motor_patrol_urls.return }}
+      text: ${{ workflow.draw_motor_map.return }}
       filename: motorbike_patrols_map.html
 
   - name: Convert motor patrol map to png
@@ -1584,10 +1546,8 @@ workflow:
         device_scale_factor: 2.0
         wait_for_timeout: 40000
         max_concurrent_pages: 1
-        serve_local_files: true
 
   # ---- COMBINED TRAJECTORIES ----
-
   - name: Merge motorbike, vehicle and foot patrol trajectories 
     id: merge_trajs 
     task: ecoscope_workflows_ext_mnc.tasks.merge_multiple_df
