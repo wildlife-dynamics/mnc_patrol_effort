@@ -39,9 +39,6 @@ from ecoscope_workflows_ext_custom.tasks.results import (
 )
 from ecoscope_workflows_ext_custom.tasks.results import draw_map as draw_map
 from ecoscope_workflows_ext_custom.tasks.results import (
-    rewrite_file_urls_for_screenshots as rewrite_file_urls_for_screenshots,
-)
-from ecoscope_workflows_ext_custom.tasks.results import (
     set_base_maps_pydeck as set_base_maps_pydeck,
 )
 from ecoscope_workflows_ext_custom.tasks.transformation import (
@@ -68,7 +65,6 @@ from ecoscope_workflows_ext_ecoscope.tasks.transformation import (
 from ecoscope_workflows_ext_ecoscope.tasks.transformation import (
     normalize_json_column as normalize_json_column,
 )
-from ecoscope_workflows_ext_mep.tasks import gdf_to_geojson as gdf_to_geojson
 from ecoscope_workflows_ext_mnc.tasks import add_totals_row as add_totals_row
 from ecoscope_workflows_ext_mnc.tasks import capitalize_text as capitalize_text
 from ecoscope_workflows_ext_mnc.tasks import compute_occupancy as compute_occupancy
@@ -84,7 +80,6 @@ from ecoscope_workflows_ext_mnc.tasks import (
 from ecoscope_workflows_ext_mnc.tasks import (
     explode_multiple_columns as explode_multiple_columns,
 )
-from ecoscope_workflows_ext_mnc.tasks import filter_columns as filter_columns
 from ecoscope_workflows_ext_mnc.tasks import (
     filter_non_empty_values as filter_non_empty_values,
 )
@@ -2356,19 +2351,19 @@ persist_foot_df = (
 
 
 # %% [markdown]
-# ## Apply Colormap to foot patrols
+# ## Create foot patrol coverage grid
 
 # %%
 # parameters
 
-apply_footp_colormap_params = dict()
+foot_patrol_grid_visits_params = dict()
 
 # %%
 # call the task
 
 
-apply_footp_colormap = (
-    apply_color_map.set_task_instance_id("apply_footp_colormap")
+foot_patrol_grid_visits = (
+    create_patrol_coverage_grid.set_task_instance_id("foot_patrol_grid_visits")
     .handle_errors()
     .with_tracing()
     .skipif(
@@ -2379,30 +2374,26 @@ apply_footp_colormap = (
         unpack_depth=1,
     )
     .partial(
-        input_column_name="patrol_type_value",
-        output_column_name="foot_patrol_colors",
-        colormap="tab20",
-        df=rename_foot_trajs,
-        **apply_footp_colormap_params,
+        grid_cell_size=1000, trajs=rename_foot_trajs, **foot_patrol_grid_visits_params
     )
     .call()
 )
 
 
 # %% [markdown]
-# ## Filter patrol columns for foot trajs
+# ## Apply bin classification on foot patrol grids
 
 # %%
 # parameters
 
-filter_foot_trajs_params = dict()
+apply_foot_class_grid_params = dict()
 
 # %%
 # call the task
 
 
-filter_foot_trajs = (
-    filter_columns.set_task_instance_id("filter_foot_trajs")
+apply_foot_class_grid = (
+    apply_classification.set_task_instance_id("apply_foot_class_grid")
     .handle_errors()
     .with_tracing()
     .skipif(
@@ -2413,29 +2404,31 @@ filter_foot_trajs = (
         unpack_depth=1,
     )
     .partial(
-        df=apply_footp_colormap,
-        columns=["geometry", "foot_patrol_colors", "patrol_type_value"],
-        exclude=None,
-        **filter_foot_trajs_params,
+        input_column_name="unique_patrol_count",
+        output_column_name="density_bins",
+        label_options={"label_ranges": False, "label_decimals": 1},
+        classification_options={"k": 5, "scheme": "equal_interval"},
+        df=foot_patrol_grid_visits,
+        **apply_foot_class_grid_params,
     )
     .call()
 )
 
 
 # %% [markdown]
-# ## Persist foot patrols as geojson
+# ## Apply Colormap to foot patrol grid visits
 
 # %%
 # parameters
 
-persist_foot_geojson_params = dict()
+apply_foot_grid_colormap_params = dict()
 
 # %%
 # call the task
 
 
-persist_foot_geojson = (
-    gdf_to_geojson.set_task_instance_id("persist_foot_geojson")
+apply_foot_grid_colormap = (
+    apply_color_map.set_task_instance_id("apply_foot_grid_colormap")
     .handle_errors()
     .with_tracing()
     .skipif(
@@ -2446,29 +2439,30 @@ persist_foot_geojson = (
         unpack_depth=1,
     )
     .partial(
-        root_path=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
-        df=filter_foot_trajs,
-        filename="foot_patrol_trajectories",
-        **persist_foot_geojson_params,
+        input_column_name="density_bins",
+        colormap="RdYlGn_r",
+        output_column_name="density_colors",
+        df=apply_foot_class_grid,
+        **apply_foot_grid_colormap_params,
     )
     .call()
 )
 
 
 # %% [markdown]
-# ## Generate foot patrol layers
+# ## Create  foot patrol visit grid layers
 
 # %%
 # parameters
 
-generate_foot_layers_params = dict()
+generate_foot_grid_layers_params = dict()
 
 # %%
 # call the task
 
 
-generate_foot_layers = (
-    create_geojson_layer.set_task_instance_id("generate_foot_layers")
+generate_foot_grid_layers = (
+    create_geojson_layer.set_task_instance_id("generate_foot_grid_layers")
     .handle_errors()
     .with_tracing()
     .skipif(
@@ -2484,10 +2478,10 @@ generate_foot_layers = (
             "stroked": True,
             "extruded": False,
             "wireframe": False,
-            "get_fill_color": "properties.foot_patrol_colors",
-            "get_line_color": "properties.foot_patrol_colors",
-            "opacity": 0.55,
-            "get_line_width": 1.55,
+            "get_fill_color": "density_colors",
+            "get_line_color": [0, 0, 0],
+            "opacity": 0.75,
+            "get_line_width": 0.85,
             "get_elevation": 0,
             "get_point_radius": 1,
             "line_width_units": "pixels",
@@ -2496,33 +2490,32 @@ generate_foot_layers = (
             "line_width_max_pixels": 5,
         },
         legend={
-            "title": "Patrol Type",
-            "label_column": "patrol_type_value",
-            "color_column": "foot_patrol_colors",
-            "sort": "ascending",
+            "title": "Visits",
+            "label_column": "density_bins",
+            "color_column": "density_colors",
         },
-        geodataframe=apply_footp_colormap,
-        data_url=persist_foot_geojson,
-        **generate_foot_layers_params,
+        geodataframe=apply_foot_grid_colormap,
+        data_url=None,
+        **generate_foot_grid_layers_params,
     )
     .call()
 )
 
 
 # %% [markdown]
-# ## Combine styled layers with foot layers
+# ## Combine styled layers with foot patrol coverage
 
 # %%
 # parameters
 
-combine_foot_layers_params = dict()
+combine_foot_grid_layers_params = dict()
 
 # %%
 # call the task
 
 
-combine_foot_layers = (
-    combine_deckgl_map_layers.set_task_instance_id("combine_foot_layers")
+combine_foot_grid_layers = (
+    combine_deckgl_map_layers.set_task_instance_id("combine_foot_grid_layers")
     .handle_errors()
     .with_tracing()
     .skipif(
@@ -2538,8 +2531,8 @@ combine_foot_layers = (
             create_mnc_parcels_layers,
             conservancy_text_layer,
         ],
-        grouped_layers=generate_foot_layers,
-        **combine_foot_layers_params,
+        grouped_layers=generate_foot_grid_layers,
+        **combine_foot_grid_layers_params,
     )
     .call()
 )
@@ -2604,41 +2597,9 @@ draw_foot_map = (
         title=None,
         max_zoom=10,
         legend_style={"placement": "bottom-right"},
-        geo_layers=combine_foot_layers,
+        geo_layers=combine_foot_grid_layers,
         view_state=global_zoom_value,
         **draw_foot_map_params,
-    )
-    .call()
-)
-
-
-# %% [markdown]
-# ## Rewrite foot patrols file urls
-
-# %%
-# parameters
-
-rewrite_foot_patrol_urls_params = dict()
-
-# %%
-# call the task
-
-
-rewrite_foot_patrol_urls = (
-    rewrite_file_urls_for_screenshots.set_task_instance_id("rewrite_foot_patrol_urls")
-    .handle_errors()
-    .with_tracing()
-    .skipif(
-        conditions=[
-            any_is_empty_df,
-            any_dependency_skipped,
-        ],
-        unpack_depth=1,
-    )
-    .partial(
-        html=draw_foot_map,
-        file_urls=[persist_foot_geojson],
-        **rewrite_foot_patrol_urls_params,
     )
     .call()
 )
@@ -2671,7 +2632,7 @@ persist_foot_urls = (
     )
     .partial(
         root_path=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
-        text=rewrite_foot_patrol_urls,
+        text=draw_foot_map,
         filename="foot_patrols_map.html",
         **persist_foot_urls_params,
     )
@@ -2710,7 +2671,6 @@ convert_foot_png = (
             "device_scale_factor": 2.0,
             "wait_for_timeout": 40000,
             "max_concurrent_pages": 1,
-            "serve_local_files": True,
         },
         **convert_foot_png_params,
     )
@@ -2845,19 +2805,19 @@ persist_vehicle_df = (
 
 
 # %% [markdown]
-# ## Apply Colormap to vehicle patrols
+# ## Create vehicle patrol coverage grid
 
 # %%
 # parameters
 
-apply_vehicle_colormap_params = dict()
+vehicle_patrol_grid_visits_params = dict()
 
 # %%
 # call the task
 
 
-apply_vehicle_colormap = (
-    apply_color_map.set_task_instance_id("apply_vehicle_colormap")
+vehicle_patrol_grid_visits = (
+    create_patrol_coverage_grid.set_task_instance_id("vehicle_patrol_grid_visits")
     .handle_errors()
     .with_tracing()
     .skipif(
@@ -2868,30 +2828,28 @@ apply_vehicle_colormap = (
         unpack_depth=1,
     )
     .partial(
-        input_column_name="patrol_type_value",
-        output_column_name="vehicle_patrol_colors",
-        colormap="tab20",
-        df=rename_vehicle_trajs,
-        **apply_vehicle_colormap_params,
+        grid_cell_size=1000,
+        trajs=rename_vehicle_trajs,
+        **vehicle_patrol_grid_visits_params,
     )
     .call()
 )
 
 
 # %% [markdown]
-# ## Filter patrol columns for vehicles trajs
+# ## Apply bin classification on vehicle patrol grids
 
 # %%
 # parameters
 
-filter_vehicles_trajs_params = dict()
+apply_vehicle_class_grid_params = dict()
 
 # %%
 # call the task
 
 
-filter_vehicles_trajs = (
-    filter_columns.set_task_instance_id("filter_vehicles_trajs")
+apply_vehicle_class_grid = (
+    apply_classification.set_task_instance_id("apply_vehicle_class_grid")
     .handle_errors()
     .with_tracing()
     .skipif(
@@ -2902,29 +2860,31 @@ filter_vehicles_trajs = (
         unpack_depth=1,
     )
     .partial(
-        df=apply_vehicle_colormap,
-        columns=["geometry", "vehicle_patrol_colors", "patrol_type_value"],
-        exclude=None,
-        **filter_vehicles_trajs_params,
+        input_column_name="unique_patrol_count",
+        output_column_name="density_bins",
+        label_options={"label_ranges": False, "label_decimals": 1},
+        classification_options={"k": 5, "scheme": "equal_interval"},
+        df=vehicle_patrol_grid_visits,
+        **apply_vehicle_class_grid_params,
     )
     .call()
 )
 
 
 # %% [markdown]
-# ## Persist vehicle patrols as geojson
+# ## Apply Colormap to vehicle patrol grid visits
 
 # %%
 # parameters
 
-persist_vehicle_geojson_params = dict()
+apply_vehicle_grid_colormap_params = dict()
 
 # %%
 # call the task
 
 
-persist_vehicle_geojson = (
-    gdf_to_geojson.set_task_instance_id("persist_vehicle_geojson")
+apply_vehicle_grid_colormap = (
+    apply_color_map.set_task_instance_id("apply_vehicle_grid_colormap")
     .handle_errors()
     .with_tracing()
     .skipif(
@@ -2935,29 +2895,30 @@ persist_vehicle_geojson = (
         unpack_depth=1,
     )
     .partial(
-        root_path=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
-        df=filter_vehicles_trajs,
-        filename="vehicle_patrol_trajectories",
-        **persist_vehicle_geojson_params,
+        input_column_name="density_bins",
+        colormap="RdYlGn_r",
+        output_column_name="density_colors",
+        df=apply_vehicle_class_grid,
+        **apply_vehicle_grid_colormap_params,
     )
     .call()
 )
 
 
 # %% [markdown]
-# ## Generate vehicle patrol layers
+# ## Create vehicle patrol visit grid layers
 
 # %%
 # parameters
 
-generate_vehicle_layers_params = dict()
+generate_vehicle_grid_layers_params = dict()
 
 # %%
 # call the task
 
 
-generate_vehicle_layers = (
-    create_geojson_layer.set_task_instance_id("generate_vehicle_layers")
+generate_vehicle_grid_layers = (
+    create_geojson_layer.set_task_instance_id("generate_vehicle_grid_layers")
     .handle_errors()
     .with_tracing()
     .skipif(
@@ -2973,10 +2934,10 @@ generate_vehicle_layers = (
             "stroked": True,
             "extruded": False,
             "wireframe": False,
-            "get_fill_color": "properties.vehicle_patrol_colors",
-            "get_line_color": "properties.vehicle_patrol_colors",
-            "opacity": 0.55,
-            "get_line_width": 1.55,
+            "get_fill_color": "density_colors",
+            "get_line_color": [0, 0, 0],
+            "opacity": 0.75,
+            "get_line_width": 0.85,
             "get_elevation": 0,
             "get_point_radius": 1,
             "line_width_units": "pixels",
@@ -2985,33 +2946,32 @@ generate_vehicle_layers = (
             "line_width_max_pixels": 5,
         },
         legend={
-            "title": "Patrol Type",
-            "label_column": "patrol_type_value",
-            "color_column": "vehicle_patrol_colors",
-            "sort": "ascending",
+            "title": "Visits",
+            "label_column": "density_bins",
+            "color_column": "density_colors",
         },
-        geodataframe=apply_vehicle_colormap,
-        data_url=persist_vehicle_geojson,
-        **generate_vehicle_layers_params,
+        geodataframe=apply_vehicle_grid_colormap,
+        data_url=None,
+        **generate_vehicle_grid_layers_params,
     )
     .call()
 )
 
 
 # %% [markdown]
-# ## Combine styled layers with vehicle layers
+# ## Combine styled layers with vehicle patrol coverage
 
 # %%
 # parameters
 
-combine_vehicle_layers_params = dict()
+combine_vehicle_grid_layers_params = dict()
 
 # %%
 # call the task
 
 
-combine_vehicle_layers = (
-    combine_deckgl_map_layers.set_task_instance_id("combine_vehicle_layers")
+combine_vehicle_grid_layers = (
+    combine_deckgl_map_layers.set_task_instance_id("combine_vehicle_grid_layers")
     .handle_errors()
     .with_tracing()
     .skipif(
@@ -3027,8 +2987,8 @@ combine_vehicle_layers = (
             create_mnc_parcels_layers,
             conservancy_text_layer,
         ],
-        grouped_layers=generate_vehicle_layers,
-        **combine_vehicle_layers_params,
+        grouped_layers=generate_vehicle_grid_layers,
+        **combine_vehicle_grid_layers_params,
     )
     .call()
 )
@@ -3065,43 +3025,9 @@ draw_vehicle_map = (
         title=None,
         max_zoom=10,
         legend_style={"placement": "bottom-right"},
-        geo_layers=combine_vehicle_layers,
+        geo_layers=combine_vehicle_grid_layers,
         view_state=global_zoom_value,
         **draw_vehicle_map_params,
-    )
-    .call()
-)
-
-
-# %% [markdown]
-# ## Rewrite vehicle patrols file urls
-
-# %%
-# parameters
-
-rewrite_vehicle_patrol_urls_params = dict()
-
-# %%
-# call the task
-
-
-rewrite_vehicle_patrol_urls = (
-    rewrite_file_urls_for_screenshots.set_task_instance_id(
-        "rewrite_vehicle_patrol_urls"
-    )
-    .handle_errors()
-    .with_tracing()
-    .skipif(
-        conditions=[
-            any_is_empty_df,
-            any_dependency_skipped,
-        ],
-        unpack_depth=1,
-    )
-    .partial(
-        html=draw_vehicle_map,
-        file_urls=[persist_vehicle_geojson],
-        **rewrite_vehicle_patrol_urls_params,
     )
     .call()
 )
@@ -3134,7 +3060,7 @@ persist_vehicle_urls = (
     )
     .partial(
         root_path=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
-        text=rewrite_vehicle_patrol_urls,
+        text=draw_vehicle_map,
         filename="vehicle_patrols_map.html",
         **persist_vehicle_urls_params,
     )
@@ -3173,7 +3099,6 @@ convert_vehicle_png = (
             "device_scale_factor": 2.0,
             "wait_for_timeout": 40000,
             "max_concurrent_pages": 1,
-            "serve_local_files": True,
         },
         **convert_vehicle_png_params,
     )
@@ -3308,19 +3233,19 @@ persist_motor_df = (
 
 
 # %% [markdown]
-# ## Apply Colormap to motor patrols
+# ## Create motor patrol coverage grid
 
 # %%
 # parameters
 
-apply_motor_colormap_params = dict()
+motor_patrol_grid_visits_params = dict()
 
 # %%
 # call the task
 
 
-apply_motor_colormap = (
-    apply_color_map.set_task_instance_id("apply_motor_colormap")
+motor_patrol_grid_visits = (
+    create_patrol_coverage_grid.set_task_instance_id("motor_patrol_grid_visits")
     .handle_errors()
     .with_tracing()
     .skipif(
@@ -3331,30 +3256,26 @@ apply_motor_colormap = (
         unpack_depth=1,
     )
     .partial(
-        input_column_name="patrol_type_value",
-        output_column_name="motor_patrol_colors",
-        colormap="tab20",
-        df=rename_motor_trajs,
-        **apply_motor_colormap_params,
+        grid_cell_size=1000, trajs=rename_motor_trajs, **motor_patrol_grid_visits_params
     )
     .call()
 )
 
 
 # %% [markdown]
-# ## Filter patrol columns for motor trajs
+# ## Apply bin classification on motor patrol grids
 
 # %%
 # parameters
 
-filter_motor_trajs_params = dict()
+apply_motor_class_grid_params = dict()
 
 # %%
 # call the task
 
 
-filter_motor_trajs = (
-    filter_columns.set_task_instance_id("filter_motor_trajs")
+apply_motor_class_grid = (
+    apply_classification.set_task_instance_id("apply_motor_class_grid")
     .handle_errors()
     .with_tracing()
     .skipif(
@@ -3365,29 +3286,31 @@ filter_motor_trajs = (
         unpack_depth=1,
     )
     .partial(
-        df=apply_motor_colormap,
-        columns=["geometry", "vehicle_patrol_colors", "patrol_type_value"],
-        exclude=None,
-        **filter_motor_trajs_params,
+        input_column_name="unique_patrol_count",
+        output_column_name="density_bins",
+        label_options={"label_ranges": False, "label_decimals": 1},
+        classification_options={"k": 5, "scheme": "equal_interval"},
+        df=motor_patrol_grid_visits,
+        **apply_motor_class_grid_params,
     )
     .call()
 )
 
 
 # %% [markdown]
-# ## Persist motor patrols as geojson
+# ## Apply Colormap to motor patrol grid visits
 
 # %%
 # parameters
 
-persist_motor_geojson_params = dict()
+apply_motor_grid_colormap_params = dict()
 
 # %%
 # call the task
 
 
-persist_motor_geojson = (
-    gdf_to_geojson.set_task_instance_id("persist_motor_geojson")
+apply_motor_grid_colormap = (
+    apply_color_map.set_task_instance_id("apply_motor_grid_colormap")
     .handle_errors()
     .with_tracing()
     .skipif(
@@ -3398,29 +3321,30 @@ persist_motor_geojson = (
         unpack_depth=1,
     )
     .partial(
-        root_path=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
-        df=filter_motor_trajs,
-        filename="motor_patrol_trajectories",
-        **persist_motor_geojson_params,
+        input_column_name="density_bins",
+        colormap="RdYlGn_r",
+        output_column_name="density_colors",
+        df=apply_motor_class_grid,
+        **apply_motor_grid_colormap_params,
     )
     .call()
 )
 
 
 # %% [markdown]
-# ## Generate motor patrol layers
+# ## Create motor patrol visit grid layers
 
 # %%
 # parameters
 
-generate_motor_layers_params = dict()
+generate_motor_grid_layers_params = dict()
 
 # %%
 # call the task
 
 
-generate_motor_layers = (
-    create_geojson_layer.set_task_instance_id("generate_motor_layers")
+generate_motor_grid_layers = (
+    create_geojson_layer.set_task_instance_id("generate_motor_grid_layers")
     .handle_errors()
     .with_tracing()
     .skipif(
@@ -3436,10 +3360,10 @@ generate_motor_layers = (
             "stroked": True,
             "extruded": False,
             "wireframe": False,
-            "get_fill_color": "properties.motor_patrol_colors",
-            "get_line_color": "properties.motor_patrol_colors",
-            "opacity": 0.55,
-            "get_line_width": 1.55,
+            "get_fill_color": "density_colors",
+            "get_line_color": [0, 0, 0],
+            "opacity": 0.75,
+            "get_line_width": 0.85,
             "get_elevation": 0,
             "get_point_radius": 1,
             "line_width_units": "pixels",
@@ -3448,33 +3372,32 @@ generate_motor_layers = (
             "line_width_max_pixels": 5,
         },
         legend={
-            "title": "Patrol Type",
-            "label_column": "patrol_type_value",
-            "color_column": "motor_patrol_colors",
-            "sort": "ascending",
+            "title": "Visits",
+            "label_column": "density_bins",
+            "color_column": "density_colors",
         },
-        geodataframe=apply_motor_colormap,
-        data_url=persist_motor_geojson,
-        **generate_motor_layers_params,
+        geodataframe=apply_motor_grid_colormap,
+        data_url=None,
+        **generate_motor_grid_layers_params,
     )
     .call()
 )
 
 
 # %% [markdown]
-# ## Combine styled layers with motorbike layers
+# ## Combine styled layers with motor patrol coverage
 
 # %%
 # parameters
 
-combine_motor_layers_params = dict()
+combine_motor_grid_layers_params = dict()
 
 # %%
 # call the task
 
 
-combine_motor_layers = (
-    combine_deckgl_map_layers.set_task_instance_id("combine_motor_layers")
+combine_motor_grid_layers = (
+    combine_deckgl_map_layers.set_task_instance_id("combine_motor_grid_layers")
     .handle_errors()
     .with_tracing()
     .skipif(
@@ -3490,8 +3413,8 @@ combine_motor_layers = (
             create_mnc_parcels_layers,
             conservancy_text_layer,
         ],
-        grouped_layers=generate_motor_layers,
-        **combine_motor_layers_params,
+        grouped_layers=generate_motor_grid_layers,
+        **combine_motor_grid_layers_params,
     )
     .call()
 )
@@ -3528,41 +3451,9 @@ draw_motor_map = (
         title=None,
         max_zoom=10,
         legend_style={"placement": "bottom-right"},
-        geo_layers=combine_motor_layers,
+        geo_layers=combine_motor_grid_layers,
         view_state=global_zoom_value,
         **draw_motor_map_params,
-    )
-    .call()
-)
-
-
-# %% [markdown]
-# ## Rewrite motor patrols file urls
-
-# %%
-# parameters
-
-rewrite_motor_patrol_urls_params = dict()
-
-# %%
-# call the task
-
-
-rewrite_motor_patrol_urls = (
-    rewrite_file_urls_for_screenshots.set_task_instance_id("rewrite_motor_patrol_urls")
-    .handle_errors()
-    .with_tracing()
-    .skipif(
-        conditions=[
-            any_is_empty_df,
-            any_dependency_skipped,
-        ],
-        unpack_depth=1,
-    )
-    .partial(
-        html=draw_motor_map,
-        file_urls=[persist_motor_geojson],
-        **rewrite_motor_patrol_urls_params,
     )
     .call()
 )
@@ -3595,7 +3486,7 @@ persist_motor_urls = (
     )
     .partial(
         root_path=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
-        text=rewrite_motor_patrol_urls,
+        text=draw_motor_map,
         filename="motorbike_patrols_map.html",
         **persist_motor_urls_params,
     )
@@ -3634,7 +3525,6 @@ convert_motor_png = (
             "device_scale_factor": 2.0,
             "wait_for_timeout": 40000,
             "max_concurrent_pages": 1,
-            "serve_local_files": True,
         },
         **convert_motor_png_params,
     )
