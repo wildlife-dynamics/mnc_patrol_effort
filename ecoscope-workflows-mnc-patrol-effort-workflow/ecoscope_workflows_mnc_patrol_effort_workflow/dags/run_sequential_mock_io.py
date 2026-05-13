@@ -170,9 +170,14 @@ def main(params: Params):
             base_maps=[
                 {
                     "url": "https://server.arcgisonline.com/arcgis/rest/services/Elevation/World_Hillshade/MapServer/tile/{z}/{y}/{x}",
-                    "opacity": 1,
+                    "opacity": 0.8,
                     "max_zoom": 20,
-                }
+                },
+                {
+                    "url": "https://services.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places_Alternate/MapServer/tile/{z}/{y}/{x}",
+                    "opacity": 0.35,
+                    "max_zoom": 20,
+                },
             ],
             **(params_dict.get("configure_base_maps") or {}),
         )
