@@ -20,31 +20,35 @@ platforms = [
 linux = "4.4.0"
 
 [dependencies.ecoscope-workflows-core]
-version = "0.22.17.*"
+version = "0.22.18.*"
 channel = "https://repo.prefix.dev/ecoscope-workflows/"
 
 [dependencies.ecoscope-workflows-ext-ecoscope]
-version = "0.22.17.*"
+version = "0.22.18.*"
 channel = "https://repo.prefix.dev/ecoscope-workflows/"
 
 [dependencies.ecoscope-workflows-ext-custom]
-version = "0.0.45.*"
+version = "0.0.49.*"
 channel = "https://repo.prefix.dev/ecoscope-workflows-custom/"
 
 [dependencies.ecoscope-workflows-ext-ste]
-version = "0.0.19.*"
+version = "0.0.20.*"
 channel = "https://repo.prefix.dev/ecoscope-workflows-custom/"
 
 [dependencies.ecoscope-workflows-ext-mep]
-version = "0.0.14.*"
+version = "0.0.19.*"
+channel = "https://repo.prefix.dev/ecoscope-workflows-custom/"
+
+[dependencies.ecoscope-workflows-ext-big-life]
+version = "0.0.11.*"
 channel = "https://repo.prefix.dev/ecoscope-workflows-custom/"
 
 [dependencies.ecoscope-workflows-ext-mnc]
-version = "0.0.8.*"
+version = "0.0.10.*"
 channel = "https://repo.prefix.dev/ecoscope-workflows-custom/"
 
 [feature.runner.dependencies.ecoscope-workflows-runner]
-version = "0.22.17.*"
+version = "0.22.18.*"
 channel = "https://repo.prefix.dev/ecoscope-workflows/"
 
 [feature.runner.tasks]
@@ -138,4 +142,4 @@ no-default-feature = true
 
 [tasks]
 docker-build = "docker buildx build -t ecoscope-workflows-mnc-patrol-effort-workflow ."
-ecoscope-workflows-mnc-patrol-effort-workflow = "python -m ecoscope_workflows_mnc_patrol_effort_workflow.cli"
+ecoscope-workflows-mnc-patrol-effort-workflow = "bash run-with-traces.sh"

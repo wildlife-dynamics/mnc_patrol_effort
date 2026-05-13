@@ -17,11 +17,12 @@ pip = "*"
 hatch-vcs = "*"
 
 [feature.compile.dependencies]
-ecoscope-workflows-ext-mnc = "0.0.8.*"
-ecoscope-workflows-ext-ste = "0.0.19.*"
-ecoscope-workflows-ext-mep = "0.0.14.*"
+ecoscope-workflows-ext-mnc = "0.0.10.*"
+ecoscope-workflows-ext-ste = "0.0.20.*"
+ecoscope-workflows-ext-mep = "0.0.19.*"
+ecoscope-workflows-ext-big-life = "0.0.11.*"
 ecoscope-workflows-core = "0.22.18.*"
-ecoscope-workflows-ext-custom = "0.0.45.*"
+ecoscope-workflows-ext-custom = "0.0.49.*"
 
 [environments]
 compile = { features = ["compile"], no-default-feature = true }

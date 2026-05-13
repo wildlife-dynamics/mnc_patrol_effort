@@ -66,8 +66,14 @@ from ecoscope_workflows_ext_custom.tasks.results import (
     create_geojson_layer as create_geojson_layer,
 )
 from ecoscope_workflows_ext_custom.tasks.results import draw_map as draw_map
+from ecoscope_workflows_ext_custom.tasks.spatial_ops import (
+    create_patrol_coverage_grid as create_patrol_coverage_grid_1,
+)
 from ecoscope_workflows_ext_custom.tasks.transformation import (
     exclude_row_values as exclude_row_values,
+)
+from ecoscope_workflows_ext_custom.tasks.transformation import (
+    replace_empty_strings_in_columns as replace_empty_strings_in_columns,
 )
 from ecoscope_workflows_ext_ecoscope.tasks.analysis import summarize_df as summarize_df
 from ecoscope_workflows_ext_ecoscope.tasks.io import persist_df as persist_df
@@ -93,9 +99,6 @@ from ecoscope_workflows_ext_mnc.tasks import add_totals_row as add_totals_row
 from ecoscope_workflows_ext_mnc.tasks import capitalize_text as capitalize_text
 from ecoscope_workflows_ext_mnc.tasks import compute_occupancy as compute_occupancy
 from ecoscope_workflows_ext_mnc.tasks import (
-    create_patrol_coverage_grid as create_patrol_coverage_grid,
-)
-from ecoscope_workflows_ext_mnc.tasks import (
     custom_get_patrol_observations_from_patrols_df as custom_get_patrol_observations_from_patrols_df,
 )
 from ecoscope_workflows_ext_mnc.tasks import (
@@ -108,9 +111,6 @@ from ecoscope_workflows_ext_mnc.tasks import get_patrol_values as get_patrol_val
 from ecoscope_workflows_ext_mnc.tasks import map_name_values as map_name_values
 from ecoscope_workflows_ext_mnc.tasks import merge_dataframes as merge_dataframes
 from ecoscope_workflows_ext_mnc.tasks import merge_multiple_df as merge_multiple_df
-from ecoscope_workflows_ext_mnc.tasks import (
-    replace_missing_with_label as replace_missing_with_label,
-)
 from ecoscope_workflows_ext_mnc.tasks import round_values as round_values
 from ecoscope_workflows_ext_ste.tasks import (
     combine_deckgl_map_layers as combine_deckgl_map_layers,
@@ -260,63 +260,63 @@ def main(params: Params):
             styles={
                 "Conservancy": {
                     "extruded": False,
-                    "get_fill_color": [169, 169, 169],
-                    "get_line_color": [169, 169, 169],
-                    "get_line_width": 4.0,
+                    "get_fill_color": [119, 136, 153],
+                    "get_line_color": [119, 136, 153],
+                    "get_line_width": 1.55,
                     "stroked": True,
                     "filled": False,
-                    "opacity": 0.95,
+                    "opacity": 0.7,
                 },
                 "Conservancy Herd Zone": {
                     "extruded": False,
                     "get_fill_color": [173, 255, 47],
                     "get_line_color": [173, 255, 47],
-                    "get_line_width": 1.95,
+                    "get_line_width": 1.25,
                     "stroked": True,
                     "filled": True,
-                    "opacity": 0.15,
+                    "opacity": 0.1,
                 },
                 "Grazing Zone 1": {
                     "extruded": False,
                     "get_fill_color": [85, 107, 47],
                     "get_line_color": [85, 107, 47],
-                    "get_line_width": 1.95,
+                    "get_line_width": 1.25,
                     "stroked": True,
                     "filled": True,
-                    "opacity": 0.15,
+                    "opacity": 0.1,
                 },
                 "Grazing Zone 2": {
                     "extruded": False,
                     "get_fill_color": [0, 139, 139],
                     "get_line_color": [0, 139, 139],
-                    "get_line_width": 1.95,
+                    "get_line_width": 1.25,
                     "stroked": True,
                     "filled": True,
-                    "opacity": 0.15,
+                    "opacity": 0.1,
                 },
                 "Grazing Zone 3": {
                     "extruded": False,
                     "get_fill_color": [0, 100, 0],
                     "get_line_color": [0, 100, 0],
-                    "get_line_width": 1.95,
+                    "get_line_width": 1.25,
                     "stroked": True,
                     "filled": True,
-                    "opacity": 0.15,
+                    "opacity": 0.1,
                 },
                 "Grazing Zone 4": {
                     "extruded": False,
                     "get_fill_color": [143, 188, 139],
                     "get_line_color": [143, 188, 139],
-                    "get_line_width": 1.95,
+                    "get_line_width": 1.25,
                     "stroked": True,
                     "filled": True,
-                    "opacity": 0.15,
+                    "opacity": 0.7,
                 },
             },
             legends={
                 "title": "Legend",
                 "values": [
-                    {"label": "Conservancy", "color": "#a9a9a9"},
+                    {"label": "Conservancy Boundaries", "color": "#778899"},
                     {"label": "Conservancy Herd Zone", "color": "#adff2f"},
                     {"label": "Grazing Zone 1", "color": "#556b2f"},
                     {"label": "Grazing Zone 2", "color": "#008b8b"},
@@ -339,17 +339,17 @@ def main(params: Params):
             styles={
                 "Conservancy": {
                     "extruded": False,
-                    "get_fill_color": [169, 169, 169],
-                    "get_line_color": [169, 169, 169],
-                    "get_line_width": 4.0,
+                    "get_fill_color": [119, 136, 153],
+                    "get_line_color": [119, 136, 153],
+                    "get_line_width": 1.55,
                     "stroked": True,
                     "filled": False,
-                    "opacity": 0.95,
+                    "opacity": 0.7,
                 }
             },
             legends={
                 "title": "Legend",
-                "values": [{"label": "Boundaries", "color": "#a9a9a9"}],
+                "values": [{"label": "Conservancy Boundaries", "color": "#778899"}],
             },
             **(params_dict.get("create_conservancy_boundaries") or {}),
         )
@@ -401,7 +401,7 @@ def main(params: Params):
                 "size_max_pixels": 100,
                 "size_scale": 2.25,
                 "font_family": "Calibri",
-                "font_weight": "700",
+                "font_weight": "normal",
                 "get_text_anchor": "middle",
                 "get_alignment_baseline": "center",
                 "billboard": True,
@@ -450,7 +450,7 @@ def main(params: Params):
                 "extruded": False,
                 "get_fill_color": [189, 183, 107],
                 "get_line_color": [189, 183, 107],
-                "get_line_width": 1.95,
+                "get_line_width": 1.55,
                 "stroked": True,
                 "filled": True,
                 "opacity": 0.15,
@@ -772,7 +772,7 @@ def main(params: Params):
             config={
                 "full_page": False,
                 "device_scale_factor": 2.0,
-                "wait_for_timeout": 10,
+                "wait_for_timeout": 1,
                 "max_concurrent_pages": 1,
             },
             **(params_dict.get("convert_tevents_png") or {}),
@@ -986,7 +986,7 @@ def main(params: Params):
     )
 
     replace_transport_unspecified = (
-        replace_missing_with_label.validate()
+        replace_empty_strings_in_columns.validate()
         .set_task_instance_id("replace_transport_unspecified")
         .handle_errors()
         .with_tracing()
@@ -1000,7 +1000,9 @@ def main(params: Params):
         .partial(
             df=filter_null_patrols,
             columns=["transport_type"],
-            label="unspecified",
+            replacement="unspecified",
+            strip_whitespace=False,
+            missing="ignore",
             **(params_dict.get("replace_transport_unspecified") or {}),
         )
         .call()
@@ -1043,7 +1045,7 @@ def main(params: Params):
             events_df=explode_patrol_columns,
             patrols_column="patrol_id",
             client=er_client_name,
-            batch_size=15,
+            max_workers=15,
             **(params_dict.get("get_patrols_from_info") or {}),
         )
         .call()
@@ -1066,7 +1068,7 @@ def main(params: Params):
             patrols_df=get_patrols_from_info,
             include_patrol_details=True,
             raise_on_empty=True,
-            sub_page_size=150,
+            sub_page_size=750,
             **(params_dict.get("get_patrol_obs") or {}),
         )
         .call()
@@ -1623,7 +1625,7 @@ def main(params: Params):
     )
 
     foot_patrol_grid_visits = (
-        create_patrol_coverage_grid.validate()
+        create_patrol_coverage_grid_1.validate()
         .set_task_instance_id("foot_patrol_grid_visits")
         .handle_errors()
         .with_tracing()
@@ -1636,6 +1638,8 @@ def main(params: Params):
         )
         .partial(
             grid_cell_size=1000,
+            keep_empty_cells=False,
+            aoi=None,
             trajs=rename_foot_trajs,
             **(params_dict.get("foot_patrol_grid_visits") or {}),
         )
@@ -1707,8 +1711,8 @@ def main(params: Params):
                 "wireframe": False,
                 "get_fill_color": "density_colors",
                 "get_line_color": [0, 0, 0],
-                "opacity": 0.75,
-                "get_line_width": 0.85,
+                "opacity": 0.55,
+                "get_line_width": 0.95,
                 "get_elevation": 0,
                 "get_point_radius": 1,
                 "line_width_units": "pixels",
@@ -1717,7 +1721,7 @@ def main(params: Params):
                 "line_width_max_pixels": 5,
             },
             legend={
-                "title": "Visits",
+                "title": "Grid Cell Visits",
                 "label_column": "density_bins",
                 "color_column": "density_colors",
             },
@@ -1936,7 +1940,7 @@ def main(params: Params):
     )
 
     vehicle_patrol_grid_visits = (
-        create_patrol_coverage_grid.validate()
+        create_patrol_coverage_grid_1.validate()
         .set_task_instance_id("vehicle_patrol_grid_visits")
         .handle_errors()
         .with_tracing()
@@ -1949,6 +1953,8 @@ def main(params: Params):
         )
         .partial(
             grid_cell_size=1000,
+            aoi=None,
+            keep_empty_cells=False,
             trajs=rename_vehicle_trajs,
             **(params_dict.get("vehicle_patrol_grid_visits") or {}),
         )
@@ -2020,8 +2026,8 @@ def main(params: Params):
                 "wireframe": False,
                 "get_fill_color": "density_colors",
                 "get_line_color": [0, 0, 0],
-                "opacity": 0.75,
-                "get_line_width": 0.85,
+                "opacity": 0.55,
+                "get_line_width": 0.95,
                 "get_elevation": 0,
                 "get_point_radius": 1,
                 "line_width_units": "pixels",
@@ -2030,7 +2036,7 @@ def main(params: Params):
                 "line_width_max_pixels": 5,
             },
             legend={
-                "title": "Visits",
+                "title": "Grid Cell Visits",
                 "label_column": "density_bins",
                 "color_column": "density_colors",
             },
@@ -2228,7 +2234,7 @@ def main(params: Params):
     )
 
     motor_patrol_grid_visits = (
-        create_patrol_coverage_grid.validate()
+        create_patrol_coverage_grid_1.validate()
         .set_task_instance_id("motor_patrol_grid_visits")
         .handle_errors()
         .with_tracing()
@@ -2241,6 +2247,8 @@ def main(params: Params):
         )
         .partial(
             grid_cell_size=1000,
+            aoi=None,
+            keep_empty_cells=False,
             trajs=rename_motor_trajs,
             **(params_dict.get("motor_patrol_grid_visits") or {}),
         )
@@ -2312,8 +2320,8 @@ def main(params: Params):
                 "wireframe": False,
                 "get_fill_color": "density_colors",
                 "get_line_color": [0, 0, 0],
-                "opacity": 0.75,
-                "get_line_width": 0.85,
+                "opacity": 0.55,
+                "get_line_width": 0.95,
                 "get_elevation": 0,
                 "get_point_radius": 1,
                 "line_width_units": "pixels",
@@ -2322,7 +2330,7 @@ def main(params: Params):
                 "line_width_max_pixels": 5,
             },
             legend={
-                "title": "Visits",
+                "title": "Grid Cell Visits",
                 "label_column": "density_bins",
                 "color_column": "density_colors",
             },
@@ -2546,7 +2554,7 @@ def main(params: Params):
     )
 
     replace_ranger_nulls = (
-        replace_missing_with_label.validate()
+        replace_empty_strings_in_columns.validate()
         .set_task_instance_id("replace_ranger_nulls")
         .handle_errors()
         .with_tracing()
@@ -2560,7 +2568,9 @@ def main(params: Params):
         .partial(
             df=ranger_patrol_metrics,
             columns=["participants"],
-            label="Unspecified",
+            replacement="Unspecified",
+            strip_whitespace=False,
+            missing="ignore",
             **(params_dict.get("replace_ranger_nulls") or {}),
         )
         .call()
@@ -2610,7 +2620,7 @@ def main(params: Params):
     )
 
     patrol_grid_visits = (
-        create_patrol_coverage_grid.validate()
+        create_patrol_coverage_grid_1.validate()
         .set_task_instance_id("patrol_grid_visits")
         .handle_errors()
         .with_tracing()
@@ -2623,6 +2633,8 @@ def main(params: Params):
         )
         .partial(
             grid_cell_size=1000,
+            aoi=None,
+            keep_empty_cells=False,
             trajs=rename_combined_trajs,
             **(params_dict.get("patrol_grid_visits") or {}),
         )
@@ -2694,8 +2706,8 @@ def main(params: Params):
                 "wireframe": False,
                 "get_fill_color": "density_colors",
                 "get_line_color": [0, 0, 0],
-                "opacity": 0.75,
-                "get_line_width": 0.85,
+                "opacity": 0.55,
+                "get_line_width": 0.95,
                 "get_elevation": 0,
                 "get_point_radius": 1,
                 "line_width_units": "pixels",
@@ -2704,7 +2716,7 @@ def main(params: Params):
                 "line_width_max_pixels": 5,
             },
             legend={
-                "title": "Visits",
+                "title": "Grid Cell Visits",
                 "label_column": "density_bins",
                 "color_column": "density_colors",
             },

@@ -1,27 +1,31 @@
 id: mnc_patrol_effort
 requirements:
   - name: ecoscope-workflows-core
-    version: "0.22.17.*"
+    version: "0.22.18.*"
     channel: https://repo.prefix.dev/ecoscope-workflows/
 
   - name: ecoscope-workflows-ext-ecoscope
-    version: "0.22.17.*"
+    version: "0.22.18.*"
     channel: https://repo.prefix.dev/ecoscope-workflows/
 
   - name: ecoscope-workflows-ext-custom
-    version: "0.0.45.*"
+    version: "0.0.49.*"
     channel: https://repo.prefix.dev/ecoscope-workflows-custom/
 
   - name: ecoscope-workflows-ext-ste
-    version: "0.0.19.*"
+    version: "0.0.20.*"
     channel: https://repo.prefix.dev/ecoscope-workflows-custom/
 
   - name: ecoscope-workflows-ext-mep
-    version: "0.0.14.*"
+    version: "0.0.19.*"
+    channel: https://repo.prefix.dev/ecoscope-workflows-custom/
+
+  - name: ecoscope-workflows-ext-big-life
+    version: "0.0.11.*"
     channel: https://repo.prefix.dev/ecoscope-workflows-custom/
 
   - name: ecoscope-workflows-ext-mnc
-    version: "0.0.8.*"
+    version: "0.0.10.*"
     channel: https://repo.prefix.dev/ecoscope-workflows-custom/
     
 workflow:
@@ -102,63 +106,63 @@ workflow:
       styles:
         Conservancy:
           extruded: false
-          get_fill_color: [169, 169, 169]
-          get_line_color: [169, 169, 169]
-          get_line_width: 4.00
+          get_fill_color: [119, 136, 153]
+          get_line_color: [119, 136, 153]
+          get_line_width: 1.55
           stroked: true
           filled: false
-          opacity: 0.95
+          opacity: 0.70
 
         Conservancy Herd Zone:
           extruded: false
           get_fill_color: [173, 255, 47]
           get_line_color: [173, 255, 47]
-          get_line_width: 1.95
+          get_line_width: 1.25
           stroked: true
           filled: true
-          opacity: 0.15
+          opacity: 0.10
 
         Grazing Zone 1:
           extruded: false
           get_fill_color: [85, 107, 47]
           get_line_color: [85, 107, 47]
-          get_line_width: 1.95
+          get_line_width: 1.25
           stroked: true
           filled: true
-          opacity: 0.15
+          opacity: 0.10
 
         Grazing Zone 2:
           extruded: false
           get_fill_color: [0, 139, 139]
           get_line_color: [0, 139, 139]
-          get_line_width: 1.95
+          get_line_width: 1.25
           stroked: true
           filled: true
-          opacity: 0.15
+          opacity: 0.10
 
         Grazing Zone 3:
           extruded: false
           get_fill_color: [0, 100, 0]
           get_line_color: [0, 100, 0]
-          get_line_width: 1.95
+          get_line_width: 1.25
           stroked: true
           filled: true
-          opacity: 0.15
+          opacity: 0.10
 
         Grazing Zone 4:
           extruded: false
           get_fill_color: [143, 188, 139]
           get_line_color: [143, 188, 139]
-          get_line_width: 1.95
+          get_line_width: 1.25
           stroked: true
           filled: true
-          opacity: 0.15
+          opacity: 0.70
 
       legends:
         title: Legend
         values: 
-          - label: Conservancy
-            color: "#a9a9a9"
+          - label: Conservancy Boundaries
+            color: "#778899"
           - label: Conservancy Herd Zone
             color: "#adff2f"
           - label: Grazing Zone 1
@@ -178,18 +182,18 @@ workflow:
       styles:
         Conservancy:
           extruded: false
-          get_fill_color: [169, 169, 169]
-          get_line_color: [169, 169, 169]
-          get_line_width: 4.00
+          get_fill_color: [119, 136, 153]
+          get_line_color: [119, 136, 153]
+          get_line_width: 1.55
           stroked: true
           filled: false
-          opacity: 0.95
+          opacity: 0.70
 
       legends:
         title: Legend 
         values: 
-          - label: Boundaries
-            color: "#a9a9a9"
+          - label: Conservancy Boundaries
+            color: "#778899"
 
   - name: Create conservancy gdf from split dict 
     id: conservancy_gdf
@@ -219,12 +223,12 @@ workflow:
         
         get_size: 1500
         size_units: meters 
-        size_min_pixels: 70
+        size_min_pixels: 70 #65 
         size_max_pixels: 100
         size_scale: 2.25 
 
         font_family: Calibri 
-        font_weight: "700" 
+        font_weight: "normal" 
         get_text_anchor: middle 
         get_alignment_baseline: center
         billboard: true 
@@ -258,7 +262,7 @@ workflow:
         extruded: false
         get_fill_color: [189, 183, 107]
         get_line_color: [189, 183, 107]
-        get_line_width: 1.95
+        get_line_width: 1.55
         stroked: true 
         filled: true 
         opacity: 0.15
@@ -474,7 +478,7 @@ workflow:
       config:
         full_page: false
         device_scale_factor: 2.0
-        wait_for_timeout: 10
+        wait_for_timeout: 1
         max_concurrent_pages: 1
 
   - name : Filter events and get patrol information 
@@ -602,7 +606,7 @@ workflow:
     
   - name: Replace transport type nulls with unspecified
     id: replace_transport_unspecified 
-    task: replace_missing_with_label 
+    task: replace_empty_strings_in_columns #replace_missing_with_label
     skipif:
       conditions:
         - any_is_empty_df
@@ -611,7 +615,9 @@ workflow:
       df: ${{ workflow.filter_null_patrols.return }}
       columns: 
         - transport_type 
-      label: unspecified 
+      replacement: unspecified 
+      strip_whitespace: false
+      missing: ignore
 
   - name: Explode columns on patrols 
     id: explode_patrol_columns 
@@ -638,7 +644,7 @@ workflow:
       events_df : ${{ workflow.explode_patrol_columns.return }}
       patrols_column: patrol_id 
       client: ${{ workflow.er_client_name.return }}
-      batch_size: 15
+      max_workers: 15
 
   - name: Get patrol observations from patrol df 
     id: get_patrol_obs 
@@ -652,7 +658,7 @@ workflow:
       patrols_df : ${{ workflow.get_patrols_from_info.return }}
       include_patrol_details: true 
       raise_on_empty: true
-      sub_page_size: 150
+      sub_page_size: 750 #set to 1000
 
   - name: Drop values from patrol information df 
     id: drop_values_patrol_info 
@@ -1027,13 +1033,15 @@ workflow:
 
   - name: Create foot patrol coverage grid
     id: foot_patrol_grid_visits 
-    task: create_patrol_coverage_grid 
+    task: ecoscope_workflows_ext_custom.tasks.spatial_ops.create_patrol_coverage_grid 
     skipif:
       conditions:
         - any_is_empty_df
         - any_dependency_skipped
     partial:
       grid_cell_size: 1000
+      keep_empty_cells: False 
+      aoi: null
       trajs: ${{ workflow.rename_foot_trajs.return }}
 
   - name: Apply bin classification on foot patrol grids
@@ -1082,8 +1090,8 @@ workflow:
         wireframe: false
         get_fill_color: density_colors
         get_line_color: [0, 0, 0]
-        opacity: 0.75 
-        get_line_width: 0.85
+        opacity: 0.55 
+        get_line_width: 0.95
         get_elevation: 0
         get_point_radius: 1
         line_width_units: pixels 
@@ -1091,7 +1099,7 @@ workflow:
         line_width_min_pixels: 1
         line_width_max_pixels: 5
       legend:
-        title: Visits
+        title: Grid Cell Visits
         label_column: density_bins
         color_column: density_colors
       geodataframe: ${{ workflow.apply_foot_grid_colormap.return }}
@@ -1228,13 +1236,15 @@ workflow:
 
   - name: Create vehicle patrol coverage grid
     id: vehicle_patrol_grid_visits 
-    task: create_patrol_coverage_grid 
+    task: ecoscope_workflows_ext_custom.tasks.spatial_ops.create_patrol_coverage_grid  
     skipif:
       conditions:
         - any_is_empty_df
         - any_dependency_skipped
     partial:
       grid_cell_size: 1000
+      aoi: null 
+      keep_empty_cells: false
       trajs: ${{ workflow.rename_vehicle_trajs.return }}
 
   - name: Apply bin classification on vehicle patrol grids
@@ -1283,8 +1293,8 @@ workflow:
         wireframe: false
         get_fill_color: density_colors
         get_line_color: [0, 0, 0]
-        opacity: 0.75 
-        get_line_width: 0.85
+        opacity: 0.55 
+        get_line_width: 0.95
         get_elevation: 0
         get_point_radius: 1
         line_width_units: pixels 
@@ -1292,7 +1302,7 @@ workflow:
         line_width_min_pixels: 1
         line_width_max_pixels: 5
       legend:
-        title: Visits
+        title: Grid Cell Visits
         label_column: density_bins
         color_column: density_colors
       geodataframe: ${{ workflow.apply_vehicle_grid_colormap.return }}
@@ -1417,13 +1427,15 @@ workflow:
 
   - name: Create motor patrol coverage grid
     id: motor_patrol_grid_visits 
-    task: create_patrol_coverage_grid 
+    task: ecoscope_workflows_ext_custom.tasks.spatial_ops.create_patrol_coverage_grid 
     skipif:
       conditions:
         - any_is_empty_df
         - any_dependency_skipped
     partial:
       grid_cell_size: 1000
+      aoi: null 
+      keep_empty_cells: false
       trajs: ${{ workflow.rename_motor_trajs.return }}
 
   - name: Apply bin classification on motor patrol grids
@@ -1472,8 +1484,8 @@ workflow:
         wireframe: false
         get_fill_color: density_colors
         get_line_color: [0, 0, 0]
-        opacity: 0.75 
-        get_line_width: 0.85
+        opacity: 0.55 
+        get_line_width: 0.95
         get_elevation: 0
         get_point_radius: 1
         line_width_units: pixels 
@@ -1481,7 +1493,7 @@ workflow:
         line_width_min_pixels: 1
         line_width_max_pixels: 5
       legend:
-        title: Visits
+        title: Grid Cell Visits
         label_column: density_bins
         color_column: density_colors
       geodataframe: ${{ workflow.apply_motor_grid_colormap.return }}
@@ -1632,7 +1644,7 @@ workflow:
 
   - name: Replace nulls with unspecified
     id: replace_ranger_nulls
-    task: replace_missing_with_label
+    task: replace_empty_strings_in_columns #replace_missing_with_label
     skipif:
       conditions:
         - any_is_empty_df
@@ -1641,7 +1653,9 @@ workflow:
       df: ${{ workflow.ranger_patrol_metrics.return }}
       columns: 
         - participants
-      label: Unspecified
+      replacement: Unspecified 
+      strip_whitespace: false
+      missing: ignore
 
   - name: Add totals row to overall patrol metrics
     id: add_ranger_metrics_totals
@@ -1671,13 +1685,15 @@ workflow:
 
   - name: Compute patrol visits 
     id: patrol_grid_visits
-    task: create_patrol_coverage_grid
+    task: ecoscope_workflows_ext_custom.tasks.spatial_ops.create_patrol_coverage_grid 
     skipif:
       conditions:
         - any_is_empty_df
         - any_dependency_skipped
     partial:
       grid_cell_size: 1000
+      aoi: null 
+      keep_empty_cells: false
       trajs: ${{ workflow.rename_combined_trajs.return }}
 
   - name: Apply bin classification on grids
@@ -1726,8 +1742,8 @@ workflow:
         wireframe: false
         get_fill_color: density_colors
         get_line_color: [0, 0, 0]
-        opacity: 0.75 
-        get_line_width: 0.85
+        opacity: 0.55 
+        get_line_width: 0.95
         get_elevation: 0
         get_point_radius: 1
         line_width_units: pixels 
@@ -1735,7 +1751,7 @@ workflow:
         line_width_min_pixels: 1
         line_width_max_pixels: 5
       legend:
-        title: Visits
+        title: Grid Cell Visits
         label_column: density_bins
         color_column: density_colors
       geodataframe: ${{ workflow.apply_grid_colormap.return }}
