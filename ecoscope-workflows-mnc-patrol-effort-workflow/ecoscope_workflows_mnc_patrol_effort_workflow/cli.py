@@ -49,6 +49,7 @@ def cli() -> None:
     "--execution-mode",
     required=True,
     type=click.Choice(["async", "sequential"]),
+    default="async",
 )
 @click.option(
     "--mock-io/--no-mock-io",

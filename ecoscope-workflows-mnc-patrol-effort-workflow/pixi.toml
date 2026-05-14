@@ -142,4 +142,4 @@ no-default-feature = true
 
 [tasks]
 docker-build = "docker buildx build -t ecoscope-workflows-mnc-patrol-effort-workflow ."
-ecoscope-workflows-mnc-patrol-effort-workflow = "bash run-with-traces.sh"
+ecoscope-workflows-mnc-patrol-effort-workflow = "python run-with-traces.py"

@@ -11,7 +11,7 @@ import json
 import os
 import warnings  # 🧪
 
-from ecoscope_workflows_core.graph import DependsOn, Graph, Node
+from ecoscope_workflows_core.graph import DependsOn, DependsOnSequence, Graph, Node
 from ecoscope_workflows_core.tasks.config import (
     set_workflow_details as set_workflow_details,
 )
@@ -275,7 +275,7 @@ def main(params: Params):
         "compute_patrol_occupancy": ["patrol_grid_visits", "conservancy_gdf"],
         "round_off_patrol": ["compute_patrol_occupancy"],
         "persist_occupancy_df": ["round_off_patrol"],
-        "mnc_events_dashboard": ["workflow_details", "time_range", "groupers"],
+        "mnc_events_dashboard": ["workflow_details", "time_range", "groupers", "generate_report"],
     }
 
     nodes = {
@@ -759,6 +759,7 @@ def main(params: Params):
                 "include_updates": False,
                 "include_related_events": False,
                 "include_null_geometry": False,
+                                "event_types": [],
                 "include_display_values": False,
             }
             | (params_dict.get("get_events_data") or {}),
@@ -2066,11 +2067,11 @@ def main(params: Params):
             )
             .set_executor("lithops"),
             partial={
-                "static_layers": [
+                "static_layers": DependsOnSequence([
                     DependsOn("create_conservancy_boundaries"),
                     DependsOn("create_mnc_parcels_layers"),
                     DependsOn("conservancy_text_layer"),
-                ],
+                ]),
                 "grouped_layers": DependsOn("generate_foot_grid_layers"),
             }
             | (params_dict.get("combine_foot_grid_layers") or {}),
@@ -2397,11 +2398,11 @@ def main(params: Params):
             )
             .set_executor("lithops"),
             partial={
-                "static_layers": [
+                "static_layers": DependsOnSequence([
                     DependsOn("create_conservancy_boundaries"),
                     DependsOn("create_mnc_parcels_layers"),
                     DependsOn("conservancy_text_layer"),
-                ],
+                ]),
                 "grouped_layers": DependsOn("generate_vehicle_grid_layers"),
             }
             | (params_dict.get("combine_vehicle_grid_layers") or {}),
@@ -2707,11 +2708,11 @@ def main(params: Params):
             )
             .set_executor("lithops"),
             partial={
-                "static_layers": [
+                "static_layers": DependsOnSequence([
                     DependsOn("create_conservancy_boundaries"),
                     DependsOn("create_mnc_parcels_layers"),
                     DependsOn("conservancy_text_layer"),
-                ],
+                ]),
                 "grouped_layers": DependsOn("generate_motor_grid_layers"),
             }
             | (params_dict.get("combine_motor_grid_layers") or {}),
@@ -2798,11 +2799,11 @@ def main(params: Params):
             .with_tracing()
             .set_executor("lithops"),
             partial={
-                "list_df": [
+                "list_df": DependsOnSequence([
                     DependsOn("foot_trajs"),
                     DependsOn("vehicle_trajs"),
                     DependsOn("motor_trajs"),
-                ],
+                ]),
                 "ignore_index": True,
                 "sort": False,
             }
@@ -3118,11 +3119,11 @@ def main(params: Params):
             )
             .set_executor("lithops"),
             partial={
-                "static_layers": [
+                "static_layers": DependsOnSequence([
                     DependsOn("create_conservancy_boundaries"),
                     DependsOn("create_mnc_parcels_layers"),
                     DependsOn("conservancy_text_layer"),
-                ],
+                ]),
                 "grouped_layers": DependsOn("generate_grid_layers"),
             }
             | (params_dict.get("combine_grid_layers") or {}),
@@ -3273,6 +3274,7 @@ def main(params: Params):
             .with_tracing()
             .set_executor("lithops"),
             partial={
+                                "widgets": [],
                 "details": DependsOn("workflow_details"),
                 "time_range": DependsOn("time_range"),
                 "groupers": DependsOn("groupers"),
