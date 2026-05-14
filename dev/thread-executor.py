@@ -41,7 +41,7 @@ def _patch_executor() -> None:
     except ImportError:
         return  # lithops not installed, nothing to patch
 
-    max_workers = int(os.environ.get("ECOSCOPE_MAX_WORKERS", "") or os.cpu_count() or 4)
+    max_workers = int(os.environ.get("ECOSCOPE_MAX_WORKERS", "") or max(1, (os.cpu_count() or 4) // 2))
     _pool = concurrent.futures.ThreadPoolExecutor(
         max_workers=max_workers,
         thread_name_prefix="ecoscope-task",
@@ -105,7 +105,10 @@ if __name__ == "__main__":
 
     # Print machine spec and per-task timing summary once all tasks are done.
     _results_env = os.environ.get("ECOSCOPE_WORKFLOWS_RESULTS", "")
-    _results_dir = _results_env[len("file://") :] if _results_env.startswith("file://") else _results_env
+    _rp = _results_env[7:] if _results_env.startswith("file://") else _results_env
+    if len(_rp) > 2 and _rp[0] == "/" and _rp[2] == ":":
+        _rp = _rp[1:]
+    _results_dir = _rp
     _traces = os.path.join(_results_dir, "otel_traces.jsonl") if _results_dir else ""
     if _traces and os.path.isfile(_traces):
         _here = os.path.dirname(os.path.abspath(__file__))
