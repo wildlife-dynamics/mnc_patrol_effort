@@ -195,7 +195,7 @@ def main(params: Params):
         "vehicle_patrol_metrics": ["rename_vehicle_trajs"],
         "add_vh_metrics_totals": ["vehicle_patrol_metrics"],
         "persist_vehicle_df": ["add_vh_metrics_totals"],
-        "vehicle_patrol_grid_visits": ["rename_vehicle_trajs"],
+        "vehicle_patrol_grid_visits": ["rename_vehicle_trajs", "foot_patrol_grid_visits"],
         "apply_vehicle_class_grid": ["vehicle_patrol_grid_visits"],
         "apply_vehicle_grid_colormap": ["apply_vehicle_class_grid"],
         "generate_vehicle_grid_layers": ["apply_vehicle_grid_colormap"],
@@ -215,7 +215,7 @@ def main(params: Params):
         "motor_patrol_metrics": ["rename_motor_trajs"],
         "add_mb_metrics_totals": ["motor_patrol_metrics"],
         "persist_motor_df": ["add_mb_metrics_totals"],
-        "motor_patrol_grid_visits": ["rename_motor_trajs"],
+        "motor_patrol_grid_visits": ["rename_motor_trajs", "vehicle_patrol_grid_visits"],
         "apply_motor_class_grid": ["motor_patrol_grid_visits"],
         "apply_motor_grid_colormap": ["apply_motor_class_grid"],
         "generate_motor_grid_layers": ["apply_motor_grid_colormap"],
@@ -239,7 +239,7 @@ def main(params: Params):
         "replace_ranger_nulls": ["ranger_patrol_metrics"],
         "add_ranger_metrics_totals": ["replace_ranger_nulls"],
         "persist_total_df": ["add_ranger_metrics_totals"],
-        "patrol_grid_visits": ["rename_combined_trajs"],
+        "patrol_grid_visits": ["rename_combined_trajs", "motor_patrol_grid_visits"],
         "apply_classification_grid": ["patrol_grid_visits"],
         "apply_grid_colormap": ["apply_classification_grid"],
         "generate_grid_layers": ["apply_grid_colormap"],
@@ -259,7 +259,7 @@ def main(params: Params):
         "compute_patrol_occupancy": ["patrol_grid_visits", "conservancy_gdf"],
         "round_off_patrol": ["compute_patrol_occupancy"],
         "persist_occupancy_df": ["round_off_patrol"],
-        "mnc_events_dashboard": ["workflow_details", "time_range", "groupers", "generate_report"],
+        "mnc_events_dashboard": ["workflow_details", "time_range", "groupers", "persist_total_df", "convert_grid_png", "persist_occupancy_df"],
     }
 
     nodes = {

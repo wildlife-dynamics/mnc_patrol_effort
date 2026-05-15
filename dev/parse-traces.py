@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """Parse otel_traces.jsonl and print a clean per-task timing summary."""
 
+import contextlib
+import io
 import json
 import sys
 from datetime import datetime
@@ -141,6 +143,20 @@ def print_machine_spec(traces_path: str, run_start: datetime | None = None) -> d
 
 
 def main(traces_path: str) -> int:
+    buf = io.StringIO()
+    with contextlib.redirect_stdout(buf):
+        rc = _run_main(traces_path)
+    output = buf.getvalue()
+    sys.stdout.write(output)
+    summary_path = Path(traces_path).parent / "timing_summary.txt"
+    try:
+        summary_path.write_text(output)
+    except Exception:
+        pass
+    return rc
+
+
+def _run_main(traces_path: str) -> int:
     spans = []
     with open(traces_path) as f:
         for line in f:

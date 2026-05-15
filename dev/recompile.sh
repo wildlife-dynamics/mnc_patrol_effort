@@ -148,10 +148,56 @@ for f in files:
         print(f"{f.name}: no DependsOnSequence changes needed")
 PYEOF
 
-# dispatch.py expects the terminal node to return a Pydantic model with model_dump().
-# generate_report returns a str, so it must NOT be the terminal node. Add generate_report
-# as a topological dependency of mnc_events_dashboard so that mnc_events_dashboard is
-# always the last node in the execution graph and returns the Dashboard model.
+# Serialize the CPU-intensive grid creation tasks so they never run concurrently.
+# The compiler schedules foot/vehicle/motor/combined grids in parallel (they share
+# no data dependency), but each create_patrol_coverage_grid call is CPU-heavy enough
+# to saturate small machines when all run at once.  Chain them so each waits for the
+# previous to finish before starting.
+python3 - "$dags_dir" << 'PYEOF'
+import sys
+from pathlib import Path
+
+dags = Path(sys.argv[1])
+files = [dags / "run_async.py", dags / "run_async_mock_io.py"]
+
+replacements = [
+    (
+        '"vehicle_patrol_grid_visits": ["rename_vehicle_trajs"],',
+        '"vehicle_patrol_grid_visits": ["rename_vehicle_trajs", "foot_patrol_grid_visits"],',
+    ),
+    (
+        '"motor_patrol_grid_visits": ["rename_motor_trajs"],',
+        '"motor_patrol_grid_visits": ["rename_motor_trajs", "vehicle_patrol_grid_visits"],',
+    ),
+    (
+        '"patrol_grid_visits": ["rename_combined_trajs"],',
+        '"patrol_grid_visits": ["rename_combined_trajs", "motor_patrol_grid_visits"],',
+    ),
+]
+
+for f in files:
+    if not f.exists():
+        continue
+    text = f.read_text()
+    modified = False
+    for old, new in replacements:
+        task = new.split(":")[0].strip().strip('"')
+        if old in text:
+            text = text.replace(old, new)
+            modified = True
+            print(f"{f.name}: {task} now waits for previous grid task")
+        elif new in text:
+            print(f"{f.name}: {task} already serialized, skipping")
+        else:
+            print(f"Warning: {f.name}: expected dep line for {task} not found, skipping")
+    if modified:
+        f.write_text(text)
+PYEOF
+
+# Make mnc_events_dashboard the final task so dispatch.py always receives a
+# BaseModel result. The other terminal nodes (persist_total_df, convert_grid_png,
+# persist_occupancy_df) return plain strings; if any finishes after
+# mnc_events_dashboard the graph returns that string and model_dump() fails.
 python3 - "$dags_dir" << 'PYEOF'
 import sys
 from pathlib import Path
@@ -160,18 +206,17 @@ dags = Path(sys.argv[1])
 files = [dags / "run_async.py", dags / "run_async_mock_io.py"]
 
 OLD = '"mnc_events_dashboard": ["workflow_details", "time_range", "groupers"],'
-NEW = '"mnc_events_dashboard": ["workflow_details", "time_range", "groupers", "generate_report"],'
+NEW = '"mnc_events_dashboard": ["workflow_details", "time_range", "groupers", "persist_total_df", "convert_grid_png", "persist_occupancy_df"],'
 
 for f in files:
     if not f.exists():
         continue
     text = f.read_text()
-    if OLD in text:
-        text = text.replace(OLD, NEW)
-        f.write_text(text)
-        print(f"{f.name}: mnc_events_dashboard now depends on generate_report")
-    elif NEW in text:
-        print(f"{f.name}: generate_report dep already present, skipping")
+    if NEW in text:
+        print(f"{f.name}: mnc_events_dashboard already last, skipping")
+    elif OLD in text:
+        f.write_text(text.replace(OLD, NEW))
+        print(f"{f.name}: mnc_events_dashboard now depends on all terminal tasks")
     else:
         print(f"Warning: {f.name}: expected dependency line not found, skipping")
 PYEOF

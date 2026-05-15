@@ -16,6 +16,7 @@ Workers default to os.cpu_count(). Override with ECOSCOPE_MAX_WORKERS env var.
 """
 
 import concurrent.futures
+import logging
 import os
 import runpy
 import sys
@@ -24,6 +25,31 @@ from typing import Callable, Iterable, Sequence
 
 
 _pool: concurrent.futures.ThreadPoolExecutor | None = None
+
+
+class _CapturingHandler(logging.Handler):
+    """Captures log records during the workflow run for end-of-run display."""
+
+    def __init__(self) -> None:
+        super().__init__(logging.DEBUG)
+        self._fmt = logging.Formatter("%(levelname)-8s  %(name)s: %(message)s")
+        self.records: list[logging.LogRecord] = []
+
+    def emit(self, record: logging.LogRecord) -> None:
+        self.records.append(record)
+
+    def display(self) -> None:
+        shown = [
+            r for r in self.records
+            if r.levelno >= logging.WARNING
+            or (r.levelno >= logging.INFO and r.name.startswith("ecoscope"))
+        ]
+        if not shown:
+            return
+        print()
+        print("Workflow logs:")
+        for r in shown:
+            print(f"  {self._fmt.format(r)}")
 
 
 def _patch_executor() -> None:
@@ -41,7 +67,7 @@ def _patch_executor() -> None:
     except ImportError:
         return  # lithops not installed, nothing to patch
 
-    max_workers = int(os.environ.get("ECOSCOPE_MAX_WORKERS", "") or max(1, (os.cpu_count() or 4) // 2))
+    max_workers = int(os.environ.get("ECOSCOPE_MAX_WORKERS", "") or max(1, min(2, (os.cpu_count() or 2) - 1)))
     _pool = concurrent.futures.ThreadPoolExecutor(
         max_workers=max_workers,
         thread_name_prefix="ecoscope-task",
@@ -95,6 +121,9 @@ if __name__ == "__main__":
             pass
 
     sys.argv = argv
+    _log_capture = _CapturingHandler()
+    logging.getLogger().addHandler(_log_capture)
+
     _patch_executor()
     runpy.run_module(f"{workflow_module}.cli", run_name="__main__")
     # Wait for any in-flight thread pool tasks (e.g. generate_report) to finish
@@ -120,3 +149,5 @@ if __name__ == "__main__":
             _mod = _ilu.module_from_spec(_spec)
             _spec.loader.exec_module(_mod)
             _mod.main(_traces)
+
+    _log_capture.display()
